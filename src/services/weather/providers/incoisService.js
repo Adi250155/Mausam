@@ -1,11 +1,11 @@
-
 /**
  * INCOIS Marine Provider
  *
- * Responsible for marine and ocean-related information.
+ * INCOIS is the preferred Indian source for
+ * ocean and marine information.
  */
 
-const INCOIS_API_BASE =
+const INCOIS_BASE_URL =
   import.meta.env.VITE_INCOIS_API_BASE_URL || "";
 
 const INCOIS_API_KEY =
@@ -14,29 +14,48 @@ const INCOIS_API_KEY =
 /**
  * Generic INCOIS request helper.
  */
-async function incoisRequest(
+async function requestINCOIS(
   endpoint,
-  options = {}
+  params = {}
 ) {
-  if (!INCOIS_API_BASE) {
+  if (!INCOIS_BASE_URL) {
     throw new Error(
       "INCOIS API base URL is not configured."
     );
   }
 
+  const url = new URL(
+    `${INCOIS_BASE_URL}${endpoint}`
+  );
+
+  Object.entries(params).forEach(
+    ([key, value]) => {
+      if (
+        value !== undefined &&
+        value !== null &&
+        value !== ""
+      ) {
+        url.searchParams.set(
+          key,
+          String(value)
+        );
+      }
+    }
+  );
+
   const headers = {
     Accept: "application/json",
-    ...options.headers,
   };
 
   if (INCOIS_API_KEY) {
-    headers.Authorization = `Bearer ${INCOIS_API_KEY}`;
+    headers.Authorization =
+      `Bearer ${INCOIS_API_KEY}`;
   }
 
   const response = await fetch(
-    `${INCOIS_API_BASE}${endpoint}`,
+    url.toString(),
     {
-      ...options,
+      method: "GET",
       headers,
     }
   );
@@ -47,11 +66,27 @@ async function incoisRequest(
     );
   }
 
-  return response.json();
+  const data = await response.json();
+
+  if (
+    data?.error ||
+    data?.status === false
+  ) {
+    throw new Error(
+      data?.message ||
+        data?.reason ||
+        "INCOIS API returned an error."
+    );
+  }
+
+  return data;
 }
 
 /**
- * Get marine conditions.
+ * Get marine information.
+ *
+ * Currently kept behind the provider layer until
+ * the exact INCOIS service endpoint is configured.
  */
 export async function getINCOISMarineData(
   latitude,
@@ -66,12 +101,17 @@ export async function getINCOISMarineData(
     );
   }
 
-  // TODO:
-  // Connect exact INCOIS marine endpoint.
-
+  /*
+   * Do not guess an INCOIS endpoint.
+   *
+   * Open-Meteo Marine will remain the fallback
+   * until the verified INCOIS service is connected.
+   */
   throw new Error(
-    "INCOIS marine endpoint is not configured yet."
+    "INCOIS provider is not configured yet."
   );
 }
 
-export { incoisRequest };
+export {
+  requestINCOIS,
+};

@@ -1,10 +1,14 @@
 /**
  * CPCB Air Quality Provider
  *
- * Responsible for Indian air-quality data.
+ * CPCB is the preferred Indian source for AQI
+ * and pollutant information.
+ *
+ * The exact API endpoint can be configured through
+ * environment variables once API access is available.
  */
 
-const CPCB_API_BASE =
+const CPCB_BASE_URL =
   import.meta.env.VITE_CPCB_API_BASE_URL || "";
 
 const CPCB_API_KEY =
@@ -13,26 +17,48 @@ const CPCB_API_KEY =
 /**
  * Generic CPCB request helper.
  */
-async function cpcbRequest(endpoint, options = {}) {
-  if (!CPCB_API_BASE) {
+async function requestCPCB(
+  endpoint,
+  params = {}
+) {
+  if (!CPCB_BASE_URL) {
     throw new Error(
       "CPCB API base URL is not configured."
     );
   }
 
+  const url = new URL(
+    `${CPCB_BASE_URL}${endpoint}`
+  );
+
+  Object.entries(params).forEach(
+    ([key, value]) => {
+      if (
+        value !== undefined &&
+        value !== null &&
+        value !== ""
+      ) {
+        url.searchParams.set(
+          key,
+          String(value)
+        );
+      }
+    }
+  );
+
   const headers = {
     Accept: "application/json",
-    ...options.headers,
   };
 
   if (CPCB_API_KEY) {
-    headers.Authorization = `Bearer ${CPCB_API_KEY}`;
+    headers.Authorization =
+      `Bearer ${CPCB_API_KEY}`;
   }
 
   const response = await fetch(
-    `${CPCB_API_BASE}${endpoint}`,
+    url.toString(),
     {
-      ...options,
+      method: "GET",
       headers,
     }
   );
@@ -43,11 +69,28 @@ async function cpcbRequest(endpoint, options = {}) {
     );
   }
 
-  return response.json();
+  const data = await response.json();
+
+  if (
+    data?.error ||
+    data?.status === false
+  ) {
+    throw new Error(
+      data?.message ||
+        data?.reason ||
+        "CPCB API returned an error."
+    );
+  }
+
+  return data;
 }
 
 /**
- * Get AQI and pollutant information.
+ * Get CPCB air quality information.
+ *
+ * Coordinates are kept in the function signature
+ * so the provider can later resolve the nearest
+ * monitoring station.
  */
 export async function getCPCBAirQuality(
   latitude,
@@ -62,12 +105,16 @@ export async function getCPCBAirQuality(
     );
   }
 
-  // TODO:
-  // Connect the appropriate CPCB endpoint.
-
+  /*
+   * No endpoint is hardcoded until the actual
+   * CPCB API/data access used by the project
+   * is confirmed.
+   */
   throw new Error(
-    "CPCB air quality endpoint is not configured yet."
+    "CPCB provider is not configured yet."
   );
 }
 
-export { cpcbRequest };
+export {
+  requestCPCB,
+};
