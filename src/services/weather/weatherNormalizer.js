@@ -3,11 +3,10 @@ import {
   getWeatherIcon,
 } from "./weatherUtils";
 
-/* ----------------------------- */
-/* Utility helpers                */
-/* ----------------------------- */
-
-function toNumber(value, fallback = null) {
+function toNumber(
+  value,
+  fallback = null
+) {
   const number = Number(value);
 
   return Number.isFinite(number)
@@ -29,10 +28,6 @@ function firstValue(...values) {
   return null;
 }
 
-/* ----------------------------- */
-/* Current weather normalization */
-/* ----------------------------- */
-
 function normalizeCurrent(
   imd = {},
   openMeteo = {}
@@ -40,89 +35,98 @@ function normalizeCurrent(
   const current =
     openMeteo?.current || {};
 
-  const temperature = toNumber(
-    firstValue(
-      imd.temperature,
-      imd.temp,
-      imd.t,
-      current.temperature_2m
-    )
-  );
+  const temperature =
+    toNumber(
+      firstValue(
+        imd.temperature,
+        imd.temp,
+        imd.t,
+        current.temperature_2m
+      )
+    );
 
-  const humidity = toNumber(
-    firstValue(
-      imd.humidity,
-      imd.relativeHumidity,
-      imd.rh,
-      current.relative_humidity_2m
-    )
-  );
+  const feelsLike =
+    toNumber(
+      firstValue(
+        imd.feelsLike,
+        imd.feels_like,
+        imd.apparentTemperature,
+        current.apparent_temperature
+      )
+    );
 
-  const apparentTemperature = toNumber(
-    firstValue(
-      imd.apparentTemperature,
-      imd.feelsLike,
-      imd.feels_like,
-      current.apparent_temperature
-    )
-  );
+  const humidity =
+    toNumber(
+      firstValue(
+        imd.humidity,
+        imd.relativeHumidity,
+        imd.rh,
+        current.relative_humidity_2m
+      )
+    );
 
-  const windSpeed = toNumber(
-    firstValue(
-      imd.windSpeed,
-      imd.wind_speed,
-      imd.ws,
-      current.wind_speed_10m
-    )
-  );
+  const windSpeed =
+    toNumber(
+      firstValue(
+        imd.windSpeed,
+        imd.wind_speed,
+        imd.ws,
+        current.wind_speed_10m
+      )
+    );
 
-  const windDirection = toNumber(
-    firstValue(
-      imd.windDirection,
-      imd.wind_direction,
-      imd.wd,
-      current.wind_direction_10m
-    )
-  );
+  const windDirection =
+    toNumber(
+      firstValue(
+        imd.windDirection,
+        imd.wind_direction,
+        imd.wd,
+        current.wind_direction_10m
+      )
+    );
 
-  const visibility = toNumber(
-    firstValue(
-      imd.visibility,
-      current.visibility
-    )
-  );
+  const visibility =
+    toNumber(
+      firstValue(
+        imd.visibility,
+        current.visibility
+      )
+    );
 
-  const pressure = toNumber(
-    firstValue(
-      imd.pressure,
-      imd.pressureMSL,
-      current.surface_pressure
-    )
-  );
+  const pressure =
+    toNumber(
+      firstValue(
+        imd.pressure,
+        imd.pressureMSL,
+        current.surface_pressure
+      )
+    );
 
-  const precipitation = toNumber(
-    firstValue(
-      imd.precipitation,
-      imd.rainfall,
-      imd.rain,
-      current.precipitation
-    )
-  );
+  const precipitation =
+    toNumber(
+      firstValue(
+        imd.precipitation,
+        imd.rainfall,
+        current.precipitation
+      )
+    );
 
-  const rain = toNumber(
-    firstValue(
-      imd.rain,
-      current.rain
-    )
-  );
+  const rain =
+    toNumber(
+      firstValue(
+        imd.rain,
+        current.rain
+      )
+    );
 
-  const weatherCode = toNumber(
-    firstValue(
-      imd.weatherCode,
-      imd.weather_code,
-      current.weather_code
-    )
-  );
+  const weatherCode =
+    toNumber(
+      firstValue(
+        imd.weatherCode,
+        imd.weather_code,
+        current.weather_code
+      )
+    );
 
   const description =
     firstValue(
@@ -131,14 +135,17 @@ function normalizeCurrent(
     ) ||
     (
       weatherCode !== null
-        ? getWeatherDescription(weatherCode)
+        ? getWeatherDescription(
+            weatherCode
+          )
         : "Weather data unavailable"
     );
 
   return {
-    /* Original normalized fields */
+    ...current,
+
     temperature,
-    feelsLike: apparentTemperature,
+    feelsLike,
     humidity,
     windSpeed,
     windDirection,
@@ -149,134 +156,64 @@ function normalizeCurrent(
     weatherCode,
     description,
 
-    /* Existing widget compatibility */
-    temperature_2m: temperature,
+    temperature_2m:
+      temperature,
+
     apparent_temperature:
-      apparentTemperature,
-    relative_humidity_2m: humidity,
-    wind_speed_10m: windSpeed,
-    wind_direction_10m: windDirection,
-    precipitation,
-    rain,
-    visibility,
+      feelsLike,
 
-    weather_code: weatherCode,
+    relative_humidity_2m:
+      humidity,
 
-    /* UI helpers */
+    wind_speed_10m:
+      windSpeed,
+
+    wind_direction_10m:
+      windDirection,
+
+    weather_code:
+      weatherCode,
+
     icon:
       weatherCode !== null
-        ? getWeatherIcon(weatherCode)
+        ? getWeatherIcon(
+            weatherCode
+          )
         : "🌤️",
   };
 }
 
-/* ----------------------------- */
-/* Forecast normalization        */
-/* ----------------------------- */
-
-function normalizeDaily(
-  imdForecast = [],
-  openMeteo = {}
-) {
-  const daily =
-    openMeteo?.daily;
-
-  /*
-   * Once actual IMD forecast response is available,
-   * we can map it here.
-   *
-   * For now Open-Meteo remains the fallback source.
-   */
-
-  if (!daily?.time) {
-    return {
-      time: [],
-      weather_code: [],
-      temperature_2m_max: [],
-      temperature_2m_min: [],
-      apparent_temperature_max: [],
-      apparent_temperature_min: [],
-      precipitation_probability_max: [],
-      precipitation_sum: [],
-      wind_speed_10m_max: [],
-      uv_index_max: [],
-      sunrise: [],
-      sunset: [],
-    };
-  }
-
-  return {
-    time: daily.time,
-
-    weather_code:
-      daily.weather_code || [],
-
-    temperature_2m_max:
-      daily.temperature_2m_max || [],
-
-    temperature_2m_min:
-      daily.temperature_2m_min || [],
-
-    apparent_temperature_max:
-      daily.apparent_temperature_max || [],
-
-    apparent_temperature_min:
-      daily.apparent_temperature_min || [],
-
-    precipitation_probability_max:
-      daily.precipitation_probability_max || [],
-
-    precipitation_sum:
-      daily.precipitation_sum || [],
-
-    wind_speed_10m_max:
-      daily.wind_speed_10m_max || [],
-
-    uv_index_max:
-      daily.uv_index_max || [],
-
-    sunrise:
-      daily.sunrise || [],
-
-    sunset:
-      daily.sunset || [],
-
-    et0_fao_evapotranspiration:
-      daily.et0_fao_evapotranspiration || [],
-  };
-}
-
-/* ----------------------------- */
-/* Hourly normalization          */
-/* ----------------------------- */
-
 function normalizeHourly(
-  imd = {},
   openMeteo = {}
 ) {
   const hourly =
     openMeteo?.hourly;
 
-  if (!hourly?.time) {
+  if (!hourly) {
     return {
       time: [],
     };
   }
 
   return {
-    time: hourly.time,
+    ...hourly,
+
+    time: hourly.time || [],
 
     temperature_2m:
       hourly.temperature_2m || [],
 
     relative_humidity_2m:
-      hourly.relative_humidity_2m || [],
+      hourly.relative_humidity_2m ||
+      [],
 
     apparent_temperature:
-      hourly.apparent_temperature || [],
+      hourly.apparent_temperature ||
+      [],
 
     precipitation_probability:
-      hourly.precipitation_probability || [],
+      hourly.precipitation_probability ||
+      [],
 
     precipitation:
       hourly.precipitation || [],
@@ -291,7 +228,8 @@ function normalizeHourly(
       hourly.wind_speed_10m || [],
 
     wind_direction_10m:
-      hourly.wind_direction_10m || [],
+      hourly.wind_direction_10m ||
+      [],
 
     visibility:
       hourly.visibility || [],
@@ -300,19 +238,78 @@ function normalizeHourly(
       hourly.uv_index || [],
 
     soil_moisture_0_to_1cm:
-      hourly.soil_moisture_0_to_1cm || [],
+      hourly.soil_moisture_0_to_1cm ||
+      [],
 
     soil_moisture_1_to_3cm:
-      hourly.soil_moisture_1_to_3cm || [],
+      hourly.soil_moisture_1_to_3cm ||
+      [],
 
     evapotranspiration:
-      hourly.evapotranspiration || [],
+      hourly.evapotranspiration ||
+      [],
   };
 }
 
-/* ----------------------------- */
-/* AQI normalization             */
-/* ----------------------------- */
+function normalizeDaily(
+  openMeteo = {}
+) {
+  const daily =
+    openMeteo?.daily;
+
+  if (!daily) {
+    return {
+      time: [],
+    };
+  }
+
+  return {
+    ...daily,
+
+    time: daily.time || [],
+
+    weather_code:
+      daily.weather_code || [],
+
+    temperature_2m_max:
+      daily.temperature_2m_max || [],
+
+    temperature_2m_min:
+      daily.temperature_2m_min || [],
+
+    apparent_temperature_max:
+      daily.apparent_temperature_max ||
+      [],
+
+    apparent_temperature_min:
+      daily.apparent_temperature_min ||
+      [],
+
+    precipitation_probability_max:
+      daily.precipitation_probability_max ||
+      [],
+
+    precipitation_sum:
+      daily.precipitation_sum || [],
+
+    wind_speed_10m_max:
+      daily.wind_speed_10m_max ||
+      [],
+
+    uv_index_max:
+      daily.uv_index_max || [],
+
+    sunrise:
+      daily.sunrise || [],
+
+    sunset:
+      daily.sunset || [],
+
+    et0_fao_evapotranspiration:
+      daily.et0_fao_evapotranspiration ||
+      [],
+  };
+}
 
 function normalizeAirQuality(
   cpcb = {},
@@ -321,37 +318,42 @@ function normalizeAirQuality(
   const current =
     openMeteoAir?.current || {};
 
-  const aqi = toNumber(
-    firstValue(
-      cpcb.aqi,
-      cpcb.AQI,
-      cpcb.air_quality_index,
-      current.us_aqi,
-      current.european_aqi
-    )
-  );
+  const aqi =
+    toNumber(
+      firstValue(
+        cpcb.aqi,
+        cpcb.AQI,
+        cpcb.air_quality_index,
+        current.us_aqi,
+        current.european_aqi
+      )
+    );
 
-  const pm25 = toNumber(
-    firstValue(
-      cpcb.pm25,
-      cpcb.pm2_5,
-      cpcb.PM25,
-      current.pm2_5
-    )
-  );
+  const pm25 =
+    toNumber(
+      firstValue(
+        cpcb.pm25,
+        cpcb.pm2_5,
+        cpcb.PM25,
+        current.pm2_5
+      )
+    );
 
-  const pm10 = toNumber(
-    firstValue(
-      cpcb.pm10,
-      cpcb.PM10,
-      current.pm10
-    )
-  );
+  const pm10 =
+    toNumber(
+      firstValue(
+        cpcb.pm10,
+        cpcb.PM10,
+        current.pm10
+      )
+    );
 
   return {
     aqi,
     pm25,
     pm10,
+
+    pm2_5: pm25,
 
     co: toNumber(
       firstValue(
@@ -381,14 +383,46 @@ function normalizeAirQuality(
       )
     ),
 
-    /* Keep raw-compatible names */
-    pm2_5: pm25,
+    /*
+     * Preserve Open-Meteo structure so current
+     * widgets continue to work.
+     */
+    ...openMeteoAir,
+
+    current: {
+      ...current,
+
+      us_aqi:
+        current.us_aqi ??
+        aqi,
+
+      european_aqi:
+        current.european_aqi ??
+        aqi,
+
+      pm2_5:
+        current.pm2_5 ??
+        pm25,
+
+      pm10:
+        current.pm10 ??
+        pm10,
+    },
+
+    hourly:
+      openMeteoAir?.hourly || {},
+
+    source:
+      cpcb?.aqi != null
+        ? "CPCB"
+        : openMeteoAir
+        ? "Open-Meteo"
+        : "Unavailable",
+
+    official:
+      cpcb?.aqi != null,
   };
 }
-
-/* ----------------------------- */
-/* Marine normalization           */
-/* ----------------------------- */
 
 function normalizeMarine(
   incois = {},
@@ -398,57 +432,109 @@ function normalizeMarine(
     openMeteoMarine?.current || {};
 
   return {
-    waveHeight: toNumber(
-      firstValue(
-        incois.waveHeight,
-        incois.wave_height,
-        current.wave_height
-      )
-    ),
+    ...openMeteoMarine,
 
-    waveDirection: toNumber(
-      firstValue(
-        incois.waveDirection,
-        incois.wave_direction,
-        current.wave_direction
-      )
-    ),
+    waveHeight:
+      toNumber(
+        firstValue(
+          incois.waveHeight,
+          incois.wave_height,
+          current.wave_height
+        )
+      ),
 
-    wavePeriod: toNumber(
-      firstValue(
-        incois.wavePeriod,
-        incois.wave_period,
-        current.wave_period
-      )
-    ),
+    waveDirection:
+      toNumber(
+        firstValue(
+          incois.waveDirection,
+          incois.wave_direction,
+          current.wave_direction
+        )
+      ),
 
-    seaTemperature: toNumber(
-      firstValue(
-        incois.seaTemperature,
-        incois.sea_surface_temperature,
-        current.sea_surface_temperature
-      )
-    ),
+    wavePeriod:
+      toNumber(
+        firstValue(
+          incois.wavePeriod,
+          incois.wave_period,
+          current.wave_period
+        )
+      ),
 
-    seaLevel: toNumber(
-      firstValue(
-        incois.seaLevel,
-        incois.sea_level_height_msl,
-        current.sea_level_height_msl
-      )
-    ),
+    seaTemperature:
+      toNumber(
+        firstValue(
+          incois.seaTemperature,
+          incois.sea_surface_temperature,
+          current.sea_surface_temperature
+        )
+      ),
 
-    tide: firstValue(
-      incois.tide,
-      incois.tideData,
-      null
-    ),
+    seaLevel:
+      toNumber(
+        firstValue(
+          incois.seaLevel,
+          incois.sea_level_height_msl,
+          current.sea_level_height_msl
+        )
+      ),
+
+    tide:
+      firstValue(
+        incois.tide,
+        incois.tideData,
+        null
+      ),
+
+    current: {
+      ...current,
+
+      wave_height:
+        current.wave_height ??
+        incois.waveHeight ??
+        incois.wave_height ??
+        null,
+
+      wave_direction:
+        current.wave_direction ??
+        incois.waveDirection ??
+        incois.wave_direction ??
+        null,
+
+      wave_period:
+        current.wave_period ??
+        incois.wavePeriod ??
+        incois.wave_period ??
+        null,
+
+      sea_surface_temperature:
+        current.sea_surface_temperature ??
+        incois.seaTemperature ??
+        incois.sea_surface_temperature ??
+        null,
+
+      sea_level_height_msl:
+        current.sea_level_height_msl ??
+        incois.seaLevel ??
+        incois.sea_level_height_msl ??
+        null,
+    },
+
+    hourly:
+      openMeteoMarine?.hourly || {},
+
+    source:
+      incois?.waveHeight != null ||
+      incois?.wave_height != null
+        ? "INCOIS"
+        : openMeteoMarine
+        ? "Open-Meteo"
+        : "Unavailable",
+
+    official:
+      Boolean(incois),
   };
 }
-
-/* ----------------------------- */
-/* Official warnings              */
-/* ----------------------------- */
 
 function normalizeWarnings(
   warnings = []
@@ -501,10 +587,6 @@ function normalizeWarnings(
   );
 }
 
-/* ----------------------------- */
-/* Complete Mausam object        */
-/* ----------------------------- */
-
 export function normalizeMausamWeather({
   location = null,
   imd = null,
@@ -514,8 +596,7 @@ export function normalizeMausamWeather({
   imdWarnings = [],
 } = {}) {
   const imdCurrent =
-    imd?.current ||
-    {};
+    imd?.current || {};
 
   const openMeteoAir =
     openMeteo?.airQuality ||
@@ -525,23 +606,39 @@ export function normalizeMausamWeather({
     openMeteo?.marine ||
     {};
 
+  const hasIMDCurrent =
+    Boolean(imdCurrent);
+
+  const hasIMDForecast =
+    Array.isArray(
+      imd?.forecast
+    ) &&
+    imd.forecast.length > 0;
+
+  const hasCPCB =
+    Boolean(cpcb);
+
+  const hasINCOIS =
+    Boolean(incois);
+
   return {
     location,
 
-    current: normalizeCurrent(
-      imdCurrent,
-      openMeteo
-    ),
+    current:
+      normalizeCurrent(
+        imdCurrent,
+        openMeteo
+      ),
 
-    hourly: normalizeHourly(
-      imdCurrent,
-      openMeteo
-    ),
+    hourly:
+      normalizeHourly(
+        openMeteo
+      ),
 
-    daily: normalizeDaily(
-      imd?.forecast || [],
-      openMeteo
-    ),
+    daily:
+      normalizeDaily(
+        openMeteo
+      ),
 
     airQuality:
       normalizeAirQuality(
@@ -563,28 +660,69 @@ export function normalizeMausamWeather({
     nowcast:
       imd?.nowcast || null,
 
-    /*
-     * Keep provider information visible.
-     * Useful later for transparency in UI.
-     */
+    rainfall:
+      imd?.rainfall || null,
+
+    sunMoon:
+      imd?.sunMoon || null,
+
     source: {
-      weather: imd
-        ? "IMD"
-        : openMeteo
-        ? "Open-Meteo"
-        : "Unavailable",
+      currentWeather:
+        hasIMDCurrent
+          ? "IMD"
+          : openMeteo
+          ? "Open-Meteo"
+          : "Unavailable",
 
-      airQuality: cpcb
-        ? "CPCB"
-        : openMeteoAir
-        ? "Open-Meteo"
-        : "Unavailable",
+      forecast:
+        hasIMDForecast
+          ? "IMD"
+          : openMeteo
+          ? "Open-Meteo"
+          : "Unavailable",
 
-      marine: incois
-        ? "INCOIS"
-        : openMeteoMarine
-        ? "Open-Meteo"
-        : "Unavailable",
+      weather:
+        hasIMDCurrent
+          ? "IMD"
+          : openMeteo
+          ? "Open-Meteo"
+          : "Unavailable",
+
+      airQuality:
+        hasCPCB
+          ? "CPCB"
+          : openMeteoAir
+          ? "Open-Meteo"
+          : "Unavailable",
+
+      marine:
+        hasINCOIS
+          ? "INCOIS"
+          : openMeteoMarine
+          ? "Open-Meteo"
+          : "Unavailable",
+
+      warnings:
+        imdWarnings.length > 0
+          ? "IMD"
+          : "Unavailable",
+    },
+
+    official: {
+      weather:
+        hasIMDCurrent,
+
+      forecast:
+        hasIMDForecast,
+
+      airQuality:
+        hasCPCB,
+
+      marine:
+        hasINCOIS,
+
+      warnings:
+        imdWarnings.length > 0,
     },
 
     updatedAt:

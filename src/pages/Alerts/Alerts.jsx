@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
 import {
   getSavedLocations,
@@ -13,9 +16,25 @@ import {
 } from "../../features/alerts/alertEngine";
 
 function Alerts() {
-  const [alerts, setAlerts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [
+    weatherAlerts,
+    setWeatherAlerts,
+  ] = useState([]);
+
+  const [
+    officialWarnings,
+    setOfficialWarnings,
+  ] = useState([]);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  const [
+    error,
+    setError,
+  ] = useState("");
 
   useEffect(() => {
     async function loadAlerts() {
@@ -26,7 +45,9 @@ function Alerts() {
         const locations =
           await getSavedLocations();
 
-        if (!locations?.length) {
+        if (
+          !locations?.length
+        ) {
           throw new Error(
             "No saved location found."
           );
@@ -34,8 +55,10 @@ function Alerts() {
 
         const primary =
           locations.find(
-            (item) => item.is_primary
-          ) || locations[0];
+            (item) =>
+              item.is_primary
+          ) ||
+          locations[0];
 
         const weather =
           await getWeather(
@@ -43,10 +66,15 @@ function Alerts() {
             primary.longitude
           );
 
-        const generatedAlerts =
-          generateAlerts(weather);
+        setWeatherAlerts(
+          generateAlerts(
+            weather
+          )
+        );
 
-        setAlerts(generatedAlerts);
+        setOfficialWarnings(
+          weather?.warnings || []
+        );
       } catch (err) {
         console.error(
           "Alerts error:",
@@ -66,13 +94,18 @@ function Alerts() {
   }, []);
 
   if (loading) {
-    return <h1>Loading alerts...</h1>;
+    return (
+      <h1>
+        Loading alerts...
+      </h1>
+    );
   }
 
   if (error) {
     return (
       <div>
         <h1>Alerts</h1>
+
         <p>{error}</p>
       </div>
     );
@@ -80,27 +113,88 @@ function Alerts() {
 
   return (
     <div>
-      <h1>Weather Alerts</h1>
+      <h1>
+        Weather Alerts
+      </h1>
 
-      {alerts.length === 0 ? (
-        <p>
-          No significant weather alerts right now.
-        </p>
-      ) : (
-        alerts.map((alert, index) => (
-          <article
-            key={`${alert.type}-${index}`}
-          >
-            <h2>{alert.title}</h2>
+      <section>
+        <h2>
+          IMD Official Warnings
+        </h2>
 
-            <p>
-              Severity: {alert.severity}
-            </p>
+        {officialWarnings.length ===
+        0 ? (
+          <p>
+            No active IMD warning
+            available.
+          </p>
+        ) : (
+          officialWarnings.map(
+            (warning, index) => (
+              <article
+                key={
+                  warning.id ||
+                  `imd-${index}`
+                }
+              >
+                <h3>
+                  {warning.title}
+                </h3>
 
-            <p>{alert.message}</p>
-          </article>
-        ))
-      )}
+                <p>
+                  {warning.message}
+                </p>
+
+                {warning.area && (
+                  <p>
+                    Area:{" "}
+                    {warning.area}
+                  </p>
+                )}
+
+                <small>
+                  Source: IMD
+                </small>
+              </article>
+            )
+          )
+        )}
+      </section>
+
+      <section>
+        <h2>
+          Mausam Weather Alerts
+        </h2>
+
+        {weatherAlerts.length ===
+        0 ? (
+          <p>
+            No significant derived
+            weather alerts right now.
+          </p>
+        ) : (
+          weatherAlerts.map(
+            (alert, index) => (
+              <article
+                key={`${alert.type}-${index}`}
+              >
+                <h3>
+                  {alert.title}
+                </h3>
+
+                <p>
+                  {alert.message}
+                </p>
+
+                <small>
+                  Severity:{" "}
+                  {alert.severity}
+                </small>
+              </article>
+            )
+          )
+        )}
+      </section>
     </div>
   );
 }

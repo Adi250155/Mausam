@@ -1,19 +1,9 @@
-/**
- * INCOIS Marine Provider
- *
- * INCOIS is the preferred Indian source for
- * ocean and marine information.
- */
-
 const INCOIS_BASE_URL =
   import.meta.env.VITE_INCOIS_API_BASE_URL || "";
 
 const INCOIS_API_KEY =
   import.meta.env.VITE_INCOIS_API_KEY || "";
 
-/**
- * Generic INCOIS request helper.
- */
 async function requestINCOIS(
   endpoint,
   params = {}
@@ -82,12 +72,6 @@ async function requestINCOIS(
   return data;
 }
 
-/**
- * Get marine information.
- *
- * Currently kept behind the provider layer until
- * the exact INCOIS service endpoint is configured.
- */
 export async function getINCOISMarineData(
   latitude,
   longitude
@@ -102,10 +86,8 @@ export async function getINCOISMarineData(
   }
 
   /*
-   * Do not guess an INCOIS endpoint.
-   *
-   * Open-Meteo Marine will remain the fallback
-   * until the verified INCOIS service is connected.
+   * Keep INCOIS isolated until the verified
+   * service endpoint is configured.
    */
   throw new Error(
     "INCOIS provider is not configured yet."

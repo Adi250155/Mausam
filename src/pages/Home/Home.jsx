@@ -1,4 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import {
   getUserPreferences,
@@ -11,21 +15,49 @@ import {
   getMarineWeather,
 } from "../../services/weather/weatherService";
 
-import { getPersonalizedWidgets } from "../../personalization/widgetEngine";
+import {
+  getPersonalizedWidgets,
+} from "../../personalization/widgetEngine";
 
 import WidgetRenderer from "../../components/widgets/WidgetRenderer";
+
 import LogoutButton from "../../components/auth/LogoutButton";
 
 function Home() {
-  const [preferences, setPreferences] = useState(null);
-  const [location, setLocation] = useState(null);
+  const [
+    preferences,
+    setPreferences,
+  ] = useState(null);
 
-  const [weather, setWeather] = useState(null);
-  const [airQuality, setAirQuality] = useState(null);
-  const [marine, setMarine] = useState(null);
+  const [
+    location,
+    setLocation,
+  ] = useState(null);
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [
+    weather,
+    setWeather,
+  ] = useState(null);
+
+  const [
+    airQuality,
+    setAirQuality,
+  ] = useState(null);
+
+  const [
+    marine,
+    setMarine,
+  ] = useState(null);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  const [
+    error,
+    setError,
+  ] = useState("");
 
   useEffect(() => {
     async function loadDashboard() {
@@ -47,7 +79,9 @@ function Home() {
           );
         }
 
-        if (!locationsData?.length) {
+        if (
+          !locationsData?.length
+        ) {
           throw new Error(
             "No saved location found."
           );
@@ -55,48 +89,51 @@ function Home() {
 
         const primary =
           locationsData.find(
-            (item) => item.is_primary
-          ) || locationsData[0];
+            (item) =>
+              item.is_primary
+          ) ||
+          locationsData[0];
 
-        setPreferences(preferencesData);
-        setLocation(primary);
+        setPreferences(
+          preferencesData
+        );
+
+        setLocation(
+          primary
+        );
 
         const categories =
-          preferencesData.interests || [];
+          preferencesData.interests ||
+          [];
 
-        // Weather + AQI are essential
-        const [weatherResult, airResult] =
-          await Promise.allSettled([
-            getWeather(
-              primary.latitude,
-              primary.longitude
-            ),
-            getAirQuality(
-              primary.latitude,
-              primary.longitude
-            ),
-          ]);
+        const [
+          weatherData,
+          airData,
+        ] = await Promise.all([
+          getWeather(
+            primary.latitude,
+            primary.longitude
+          ),
+
+          getAirQuality(
+            primary.latitude,
+            primary.longitude
+          ),
+        ]);
+
+        setWeather(
+          weatherData
+        );
+
+        setAirQuality(
+          airData
+        );
 
         if (
-          weatherResult.status === "rejected"
+          categories.includes(
+            "beach"
+          )
         ) {
-          throw weatherResult.reason;
-        }
-
-        setWeather(weatherResult.value);
-
-        if (airResult.status === "fulfilled") {
-          setAirQuality(airResult.value);
-        } else {
-          console.warn(
-            "AQI unavailable:",
-            airResult.reason
-          );
-          setAirQuality(null);
-        }
-
-        // Marine data is optional
-        if (categories.includes("beach")) {
           try {
             const marineData =
               await getMarineWeather(
@@ -104,7 +141,9 @@ function Home() {
                 primary.longitude
               );
 
-            setMarine(marineData);
+            setMarine(
+              marineData
+            );
           } catch (marineError) {
             console.warn(
               "Marine data unavailable:",
@@ -113,6 +152,8 @@ function Home() {
 
             setMarine(null);
           }
+        } else {
+          setMarine(null);
         }
       } catch (err) {
         console.error(
@@ -133,22 +174,30 @@ function Home() {
   }, []);
 
   const categories =
-    preferences?.interests || [];
+    preferences?.interests ||
+    [];
 
-  const widgets = useMemo(
-    () =>
-      getPersonalizedWidgets(
-        categories,
-        weather
-      ),
-    [categories, weather]
-  );
+  const widgets =
+    useMemo(
+      () =>
+        getPersonalizedWidgets(
+          categories,
+          weather
+        ),
+      [categories, weather]
+    );
 
   if (loading) {
     return (
       <div>
-        <h1>Loading Mausam...</h1>
-        <p>Getting your personalized weather.</p>
+        <h1>
+          Loading Mausam...
+        </h1>
+
+        <p>
+          Getting your personalized
+          weather.
+        </p>
       </div>
     );
   }
@@ -156,12 +205,17 @@ function Home() {
   if (error) {
     return (
       <div>
-        <h1>Something went wrong</h1>
+        <h1>
+          Something went wrong
+        </h1>
+
         <p>{error}</p>
 
         <button
           type="button"
-          onClick={() => window.location.reload()}
+          onClick={() =>
+            window.location.reload()
+          }
         >
           Try Again
         </button>
@@ -177,7 +231,8 @@ function Home() {
         <h1>Mausam</h1>
 
         <h2>
-          {location?.name || "Your Location"}
+          {location?.name ||
+            "Your Location"}
         </h2>
 
         <p>
@@ -186,22 +241,33 @@ function Home() {
             ? categories.join(", ")
             : "you"}
         </p>
+
+        <small>
+          Weather data:{" "}
+          {weather?.source?.weather ||
+            "Unavailable"}
+        </small>
       </header>
 
       <main>
         {widgets.length > 0 ? (
-          widgets.map((widget) => (
-            <WidgetRenderer
-              key={widget}
-              widget={widget}
-              weather={weather}
-              airQuality={airQuality}
-              marine={marine}
-            />
-          ))
+          widgets.map(
+            (widget) => (
+              <WidgetRenderer
+                key={widget}
+                widget={widget}
+                weather={weather}
+                airQuality={
+                  airQuality
+                }
+                marine={marine}
+              />
+            )
+          )
         ) : (
           <p>
-            No personalized widgets available.
+            No personalized widgets
+            available.
           </p>
         )}
       </main>

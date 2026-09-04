@@ -18,7 +18,7 @@ async function fetchJson(url) {
 
   const data = await response.json();
 
-  if (data.error) {
+  if (data?.error) {
     throw new Error(
       data.reason || "API returned an error."
     );
@@ -27,22 +27,10 @@ async function fetchJson(url) {
   return data;
 }
 
-/**
- * Open-Meteo fallback weather data.
- */
 export async function getOpenMeteoWeather(
   latitude,
   longitude
 ) {
-  if (
-    latitude === undefined ||
-    longitude === undefined
-  ) {
-    throw new Error(
-      "Latitude and longitude are required."
-    );
-  }
-
   const params = new URLSearchParams({
     latitude: String(latitude),
     longitude: String(longitude),
@@ -57,6 +45,7 @@ export async function getOpenMeteoWeather(
       "wind_speed_10m",
       "wind_direction_10m",
       "visibility",
+      "surface_pressure",
     ].join(","),
 
     hourly: [
@@ -100,22 +89,10 @@ export async function getOpenMeteoWeather(
   );
 }
 
-/**
- * Open-Meteo fallback air-quality data.
- */
 export async function getOpenMeteoAirQuality(
   latitude,
   longitude
 ) {
-  if (
-    latitude === undefined ||
-    longitude === undefined
-  ) {
-    throw new Error(
-      "Latitude and longitude are required."
-    );
-  }
-
   const params = new URLSearchParams({
     latitude: String(latitude),
     longitude: String(longitude),
@@ -148,22 +125,10 @@ export async function getOpenMeteoAirQuality(
   );
 }
 
-/**
- * Open-Meteo fallback marine data.
- */
 export async function getOpenMeteoMarineWeather(
   latitude,
   longitude
 ) {
-  if (
-    latitude === undefined ||
-    longitude === undefined
-  ) {
-    throw new Error(
-      "Latitude and longitude are required."
-    );
-  }
-
   const params = new URLSearchParams({
     latitude: String(latitude),
     longitude: String(longitude),

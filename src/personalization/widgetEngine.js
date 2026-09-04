@@ -1,6 +1,7 @@
 const widgetMap = {
   health: [
     "currentWeather",
+    "officialWarning",
     "aqi",
     "uv",
     "humidity",
@@ -10,6 +11,7 @@ const widgetMap = {
 
   fitness: [
     "currentWeather",
+    "officialWarning",
     "bestRunningTime",
     "wind",
     "uv",
@@ -19,6 +21,7 @@ const widgetMap = {
 
   travel: [
     "currentWeather",
+    "officialWarning",
     "rainProbability",
     "severeWeather",
     "packingSuggestion",
@@ -27,6 +30,7 @@ const widgetMap = {
 
   agriculture: [
     "currentWeather",
+    "officialWarning",
     "rainfall",
     "soilMoisture",
     "humidity",
@@ -37,14 +41,15 @@ const widgetMap = {
 
   family: [
     "currentWeather",
+    "officialWarning",
     "rainAlert",
     "schoolCommute",
-    "severeWeather",
     "forecast",
   ],
 
   commuter: [
     "currentWeather",
+    "officialWarning",
     "rainProbability",
     "visibility",
     "fogAlert",
@@ -53,6 +58,7 @@ const widgetMap = {
 
   beach: [
     "currentWeather",
+    "officialWarning",
     "tide",
     "waveHeight",
     "waterTemperature",
@@ -62,15 +68,17 @@ const widgetMap = {
 
   events: [
     "forecast",
+    "officialWarning",
     "rainProbability",
     "comfortIndex",
     "wind",
-    "temperature",
   ],
 };
 
 function unique(items) {
-  return [...new Set(items)];
+  return [
+    ...new Set(items),
+  ];
 }
 
 export function getPersonalizedWidgets(
@@ -83,32 +91,55 @@ export function getPersonalizedWidgets(
 
   let widgets = [];
 
-  categories.forEach((category) => {
-    widgets = [
-      ...widgets,
-      ...(widgetMap[category] || []),
-    ];
-  });
+  categories.forEach(
+    (category) => {
+      widgets = [
+        ...widgets,
+        ...(widgetMap[category] ||
+          []),
+      ];
+    }
+  );
 
   widgets = unique(widgets);
 
   if (weather?.daily) {
     const rain =
       weather.daily
-        .precipitation_probability_max?.[0] ?? 0;
+        .precipitation_probability_max?.[0] ??
+      0;
+
+    const storm =
+      weather.current?.weather_code;
 
     if (rain >= 60) {
       widgets = [
         "rainProbability",
-        "severeWeather",
+        "officialWarning",
         ...widgets.filter(
           (item) =>
             item !== "rainProbability" &&
+            item !== "officialWarning"
+        ),
+      ];
+    }
+
+    if (
+      [95, 96, 99].includes(
+        storm
+      )
+    ) {
+      widgets = [
+        "officialWarning",
+        "severeWeather",
+        ...widgets.filter(
+          (item) =>
+            item !== "officialWarning" &&
             item !== "severeWeather"
         ),
       ];
     }
   }
 
-  return widgets;
+  return unique(widgets);
 }

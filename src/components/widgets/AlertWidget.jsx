@@ -9,41 +9,64 @@ function AlertWidget({
   const alerts =
     generateAlerts(weather);
 
-  const matchingAlert =
-    alerts.find((alert) => {
-      if (
-        type.toLowerCase().includes("rain")
-      ) {
-        return alert.type === "rain";
-      }
+  let filteredAlerts =
+    alerts;
 
-      if (
-        type.toLowerCase().includes("heat")
-      ) {
-        return alert.type === "heat";
-      }
+  if (type === "Heat Alert") {
+    filteredAlerts =
+      alerts.filter(
+        (alert) =>
+          alert.type === "heat"
+      );
+  }
 
-      return true;
-    });
+  if (type === "Rain Alert") {
+    filteredAlerts =
+      alerts.filter(
+        (alert) =>
+          alert.type === "rain"
+      );
+  }
+
+  if (
+    type === "Weather Alert" ||
+    type === "Severe Weather"
+  ) {
+    filteredAlerts =
+      alerts;
+  }
 
   return (
-    <div>
-      <h3>{type}</h3>
+    <section>
+      <h2>{type}</h2>
 
-      {matchingAlert ? (
-        <>
-          <h4>
-            {matchingAlert.title}
-          </h4>
-
-          <p>
-            {matchingAlert.message}
-          </p>
-        </>
+      {filteredAlerts.length === 0 ? (
+        <p>
+          No active alert.
+        </p>
       ) : (
-        <p>No active alert.</p>
+        filteredAlerts.map(
+          (alert, index) => (
+            <article
+              key={`${alert.type}-${index}`}
+            >
+              <h3>
+                {alert.title}
+              </h3>
+
+              <p>
+                {alert.message}
+              </p>
+
+              <small>
+                Severity:{" "}
+                {alert.severity}
+              </small>
+            </article>
+          )
+        )
       )}
-    </div>
+    </section>
   );
 }
 

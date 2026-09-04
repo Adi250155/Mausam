@@ -2,12 +2,12 @@ const CACHE_PREFIX =
   "mausam_weather_cache_";
 
 const DEFAULT_TTL =
-  10 * 60 * 1000; // 10 minutes
+  10 * 60 * 1000;
 
 function createCacheKey(
   latitude,
   longitude,
-  type = "weather"
+  type
 ) {
   const lat =
     Number(latitude).toFixed(3);
@@ -26,17 +26,25 @@ export function setWeatherCache(
   ttl = DEFAULT_TTL
 ) {
   try {
+    if (
+      typeof window === "undefined" ||
+      !window.localStorage
+    ) {
+      return false;
+    }
+
     const key = createCacheKey(
       latitude,
       longitude,
       type
     );
 
+    const now = Date.now();
+
     const payload = {
       data,
-      timestamp: Date.now(),
-      expiresAt:
-        Date.now() + ttl,
+      timestamp: now,
+      expiresAt: now + ttl,
     };
 
     localStorage.setItem(
@@ -47,7 +55,7 @@ export function setWeatherCache(
     return true;
   } catch (error) {
     console.warn(
-      "Unable to save weather cache:",
+      "Weather cache save failed:",
       error
     );
 
@@ -61,6 +69,13 @@ export function getWeatherCache(
   type = "weather"
 ) {
   try {
+    if (
+      typeof window === "undefined" ||
+      !window.localStorage
+    ) {
+      return null;
+    }
+
     const key = createCacheKey(
       latitude,
       longitude,
@@ -78,19 +93,25 @@ export function getWeatherCache(
       JSON.parse(raw);
 
     if (
-      !payload?.expiresAt ||
-      Date.now() >
-        payload.expiresAt
+      !payload ||
+      !payload.expiresAt
     ) {
       localStorage.removeItem(key);
+      return null;
+    }
 
+    if (
+      Date.now() >
+      payload.expiresAt
+    ) {
+      localStorage.removeItem(key);
       return null;
     }
 
     return payload.data || null;
   } catch (error) {
     console.warn(
-      "Unable to read weather cache:",
+      "Weather cache read failed:",
       error
     );
 
@@ -104,6 +125,13 @@ export function clearWeatherCache(
   type = "weather"
 ) {
   try {
+    if (
+      typeof window === "undefined" ||
+      !window.localStorage
+    ) {
+      return false;
+    }
+
     const key = createCacheKey(
       latitude,
       longitude,
@@ -115,7 +143,7 @@ export function clearWeatherCache(
     return true;
   } catch (error) {
     console.warn(
-      "Unable to clear weather cache:",
+      "Weather cache clear failed:",
       error
     );
 
@@ -125,6 +153,13 @@ export function clearWeatherCache(
 
 export function clearAllWeatherCache() {
   try {
+    if (
+      typeof window === "undefined" ||
+      !window.localStorage
+    ) {
+      return false;
+    }
+
     const keys = [];
 
     for (
@@ -151,7 +186,7 @@ export function clearAllWeatherCache() {
     return true;
   } catch (error) {
     console.warn(
-      "Unable to clear weather cache:",
+      "All weather cache clear failed:",
       error
     );
 

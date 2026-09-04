@@ -1,22 +1,9 @@
-/**
- * CPCB Air Quality Provider
- *
- * CPCB is the preferred Indian source for AQI
- * and pollutant information.
- *
- * The exact API endpoint can be configured through
- * environment variables once API access is available.
- */
-
 const CPCB_BASE_URL =
   import.meta.env.VITE_CPCB_API_BASE_URL || "";
 
 const CPCB_API_KEY =
   import.meta.env.VITE_CPCB_API_KEY || "";
 
-/**
- * Generic CPCB request helper.
- */
 async function requestCPCB(
   endpoint,
   params = {}
@@ -85,13 +72,6 @@ async function requestCPCB(
   return data;
 }
 
-/**
- * Get CPCB air quality information.
- *
- * Coordinates are kept in the function signature
- * so the provider can later resolve the nearest
- * monitoring station.
- */
 export async function getCPCBAirQuality(
   latitude,
   longitude
@@ -106,9 +86,8 @@ export async function getCPCBAirQuality(
   }
 
   /*
-   * No endpoint is hardcoded until the actual
-   * CPCB API/data access used by the project
-   * is confirmed.
+   * Keep the provider isolated until the
+   * verified CPCB API/data endpoint is configured.
    */
   throw new Error(
     "CPCB provider is not configured yet."

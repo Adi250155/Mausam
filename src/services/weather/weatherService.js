@@ -29,6 +29,11 @@ import {
   findIMDLocation,
 } from "../location/imdLocationService";
 
+import {
+  getWeatherCache,
+  setWeatherCache,
+} from "./weatherCache";
+
 async function safeCall(
   callback,
   fallback = null
@@ -58,10 +63,17 @@ export async function getWeather(
     );
   }
 
-  /*
-   * Open-Meteo is always available as the
-   * fallback provider.
-   */
+  const cached =
+    getWeatherCache(
+      latitude,
+      longitude,
+      "weather"
+    );
+
+  if (cached) {
+    return cached;
+  }
+
   const openMeteo =
     await safeCall(
       () =>
@@ -72,9 +84,6 @@ export async function getWeather(
       null
     );
 
-  /*
-   * Resolve nearest IMD station/district.
-   */
   const imdLocation =
     await safeCall(
       () =>
@@ -92,9 +101,6 @@ export async function getWeather(
   let imdRainfall = null;
   let imdSunMoon = null;
 
-  /*
-   * Only call IMD if a valid mapping exists.
-   */
   if (
     imdLocation?.imdStationId
   ) {
@@ -148,9 +154,6 @@ export async function getWeather(
       );
   }
 
-  /*
-   * Sun/moon can be requested by coordinates.
-   */
   if (imdLocation) {
     imdSunMoon =
       await safeCall(
@@ -163,25 +166,35 @@ export async function getWeather(
       );
   }
 
-  return normalizeMausamWeather({
-    location: {
-      latitude,
-      longitude,
-      imd: imdLocation,
-    },
+  const normalized =
+    normalizeMausamWeather({
+      location: {
+        latitude,
+        longitude,
+        imd: imdLocation,
+      },
 
-    imd: {
-      current: imdCurrent,
-      forecast: imdForecast,
-      nowcast: imdNowcast,
-      rainfall: imdRainfall,
-      sunMoon: imdSunMoon,
-    },
+      imd: {
+        current: imdCurrent,
+        forecast: imdForecast,
+        nowcast: imdNowcast,
+        rainfall: imdRainfall,
+        sunMoon: imdSunMoon,
+      },
 
-    imdWarnings,
+      imdWarnings,
 
-    openMeteo,
-  });
+      openMeteo,
+    });
+
+  setWeatherCache(
+    latitude,
+    longitude,
+    normalized,
+    "weather"
+  );
+
+  return normalized;
 }
 
 export async function getAirQuality(
@@ -195,6 +208,17 @@ export async function getAirQuality(
     throw new Error(
       "Latitude and longitude are required."
     );
+  }
+
+  const cached =
+    getWeatherCache(
+      latitude,
+      longitude,
+      "air-quality"
+    );
+
+  if (cached) {
+    return cached;
   }
 
   const [
@@ -230,6 +254,13 @@ export async function getAirQuality(
       },
     });
 
+  setWeatherCache(
+    latitude,
+    longitude,
+    normalized.airQuality,
+    "air-quality"
+  );
+
   return normalized.airQuality;
 }
 
@@ -244,6 +275,17 @@ export async function getMarineWeather(
     throw new Error(
       "Latitude and longitude are required."
     );
+  }
+
+  const cached =
+    getWeatherCache(
+      latitude,
+      longitude,
+      "marine"
+    );
+
+  if (cached) {
+    return cached;
   }
 
   const [
@@ -278,6 +320,13 @@ export async function getMarineWeather(
           openMeteoMarine,
       },
     });
+
+  setWeatherCache(
+    latitude,
+    longitude,
+    normalized.marine,
+    "marine"
+  );
 
   return normalized.marine;
 }

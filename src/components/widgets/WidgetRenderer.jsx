@@ -8,7 +8,10 @@ import ForecastWidget from "./ForecastWidget";
 import PollenWidget from "./PollenWidget";
 import UvWidget from "./UvWidget";
 import HumidityWidget from "./HumidityWidget";
+
 import AlertWidget from "./AlertWidget";
+import OfficialWarningWidget from "./OfficialWarningWidget";
+
 import BestRunningWidget from "./BestRunningWidget";
 import PackingWidget from "./PackingWidget";
 
@@ -41,6 +44,13 @@ function WidgetRenderer({
     case "currentWeather":
       return (
         <CurrentWeather
+          weather={weather}
+        />
+      );
+
+    case "officialWarning":
+      return (
+        <OfficialWarningWidget
           weather={weather}
         />
       );
@@ -113,7 +123,7 @@ function WidgetRenderer({
     case "severeWeather":
       return (
         <AlertWidget
-          type="Severe Weather"
+          type="Weather Alert"
           weather={weather}
         />
       );

@@ -161,15 +161,6 @@ export async function getIMDSunMoon(
   latitude,
   longitude
 ) {
-  if (
-    latitude === undefined ||
-    longitude === undefined
-  ) {
-    throw new Error(
-      "Latitude and longitude are required."
-    );
-  }
-
   return requestIMD(
     "/sunmoon",
     {
