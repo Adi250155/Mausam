@@ -2,9 +2,9 @@ const widgetMap = {
   health: [
     "currentWeather",
     "aqi",
-    "pollen",
     "uv",
     "humidity",
+    "pollen",
     "heatAlert",
   ],
 
@@ -69,22 +69,46 @@ const widgetMap = {
   ],
 };
 
-export function getPersonalizedWidgets(categories) {
+function unique(items) {
+  return [...new Set(items)];
+}
+
+export function getPersonalizedWidgets(
+  categories,
+  weather = null
+) {
   if (!Array.isArray(categories)) {
     return [];
   }
 
-  const widgets = [];
+  let widgets = [];
 
   categories.forEach((category) => {
-    const categoryWidgets = widgetMap[category] || [];
-
-    categoryWidgets.forEach((widget) => {
-      if (!widgets.includes(widget)) {
-        widgets.push(widget);
-      }
-    });
+    widgets = [
+      ...widgets,
+      ...(widgetMap[category] || []),
+    ];
   });
+
+  widgets = unique(widgets);
+
+  if (weather?.daily) {
+    const rain =
+      weather.daily
+        .precipitation_probability_max?.[0] ?? 0;
+
+    if (rain >= 60) {
+      widgets = [
+        "rainProbability",
+        "severeWeather",
+        ...widgets.filter(
+          (item) =>
+            item !== "rainProbability" &&
+            item !== "severeWeather"
+        ),
+      ];
+    }
+  }
 
   return widgets;
 }

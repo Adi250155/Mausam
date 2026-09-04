@@ -1,31 +1,71 @@
-function ForecastWidget() {
-  const forecast = [
-    {
-      day: "Today",
-      temperature: "28°C",
-      condition: "Partly Cloudy",
-    },
-    {
-      day: "Tomorrow",
-      temperature: "30°C",
-      condition: "Sunny",
-    },
-    {
-      day: "Day 3",
-      temperature: "27°C",
-      condition: "Rain",
-    },
-  ];
+import {
+  getWeatherDescription,
+  getWeatherIcon,
+} from "../../services/weather/weatherUtils";
+
+function ForecastWidget({ weather }) {
+  const daily = weather?.daily;
+
+  if (!daily?.time) {
+    return (
+      <div>
+        <h3>7 Day Forecast</h3>
+        <p>Forecast unavailable.</p>
+      </div>
+    );
+  }
+
+  const formatDay = (dateString) => {
+    return new Date(dateString).toLocaleDateString(
+      [],
+      {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      }
+    );
+  };
 
   return (
     <div>
-      <h3>Forecast</h3>
+      <h3>7 Day Forecast</h3>
 
-      {forecast.map((item) => (
-        <div key={item.day}>
-          <strong>{item.day}</strong>
-          <p>{item.temperature}</p>
-          <p>{item.condition}</p>
+      {daily.time.map((date, index) => (
+        <div key={date}>
+          <strong>
+            {formatDay(date)}
+          </strong>
+
+          <p>
+            {getWeatherIcon(
+              daily.weather_code[index]
+            )}{" "}
+            {getWeatherDescription(
+              daily.weather_code[index]
+            )}
+          </p>
+
+          <p>
+            {Math.round(
+              daily.temperature_2m_max[index]
+            )}
+            ° /{" "}
+            {Math.round(
+              daily.temperature_2m_min[index]
+            )}
+            °C
+          </p>
+
+          <p>
+            Rain:{" "}
+            {Math.round(
+              daily
+                .precipitation_probability_max[
+                index
+              ]
+            )}
+            %
+          </p>
         </div>
       ))}
     </div>

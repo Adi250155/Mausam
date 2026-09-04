@@ -1,9 +1,18 @@
-﻿function BestRunningWidget() {
+﻿import {
+  getBestRunningTime,
+} from "../../features/recommendations/recommendationEngine";
+
+function BestRunningWidget({ weather }) {
+  const result =
+    getBestRunningTime(weather);
+
   return (
     <div>
-      <h3>Best Running Time</h3>
-      <h2>5:40 AM - 7:10 AM</h2>
-      <p>Cool temperature and low UV conditions</p>
+      <h3>{result.title}</h3>
+
+      <h2>{result.value}</h2>
+
+      <p>{result.reason}</p>
     </div>
   );
 }

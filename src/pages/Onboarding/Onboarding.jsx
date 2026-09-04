@@ -1,219 +1,451 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import { categories } from "../../personalization/categories";
 import { questions } from "../../personalization/questions";
+import {
+  saveUserPreferences,
+} from "../../services/user/profileService";
 
 function Onboarding() {
   const navigate = useNavigate();
 
-  const [selectedCategories, setSelectedCategories] = useState([]);
-  const [answers, setAnswers] = useState({});
-  const [step, setStep] = useState(1);
-  const [categoryIndex, setCategoryIndex] = useState(0);
+  const [
+    selectedCategories,
+    setSelectedCategories,
+  ] = useState([]);
 
-  const toggleCategory = (categoryId) => {
+  const [answers, setAnswers] =
+    useState({});
+
+  const [step, setStep] =
+    useState(1);
+
+  const [categoryIndex, setCategoryIndex] =
+    useState(0);
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  const toggleCategory = (
+    categoryId
+  ) => {
     setSelectedCategories((prev) =>
       prev.includes(categoryId)
-        ? prev.filter((id) => id !== categoryId)
+        ? prev.filter(
+            (id) => id !== categoryId
+          )
         : [...prev, categoryId]
     );
   };
 
-  const setSingleAnswer = (questionId, optionId) => {
+  const setSingleAnswer = (
+    questionId,
+    optionId
+  ) => {
     setAnswers((prev) => ({
       ...prev,
       [questionId]: optionId,
     }));
   };
 
-  const toggleMultiAnswer = (questionId, optionId) => {
+  const toggleMultiAnswer = (
+    questionId,
+    optionId
+  ) => {
     setAnswers((prev) => {
-      const currentAnswers = prev[questionId] || [];
+      const current =
+        prev[questionId] || [];
 
       return {
         ...prev,
-        [questionId]: currentAnswers.includes(optionId)
-          ? currentAnswers.filter((id) => id !== optionId)
-          : [...currentAnswers, optionId],
+        [questionId]:
+          current.includes(optionId)
+            ? current.filter(
+                (id) => id !== optionId
+              )
+            : [
+                ...current,
+                optionId,
+              ],
       };
     });
   };
 
-  const setTextAnswer = (questionId, value) => {
+  const setTextAnswer = (
+    questionId,
+    value
+  ) => {
     setAnswers((prev) => ({
       ...prev,
       [questionId]: value,
     }));
   };
 
-  const handleCategoryContinue = () => {
-    if (selectedCategories.length === 0) {
-      alert("Please select at least one category.");
-      return;
-    }
-
-    setStep(2);
-    setCategoryIndex(0);
-  };
-
-  const handleQuestionContinue = () => {
-    const currentCategory = selectedCategories[categoryIndex];
-    const currentQuestions = questions[currentCategory] || [];
-
-    const unansweredQuestion = currentQuestions.find((question) => {
-      const answer = answers[question.id];
-
-      if (question.type === "multi") {
-        return !answer || answer.length === 0;
+  const handleCategoryContinue =
+    () => {
+      if (
+        selectedCategories.length ===
+        0
+      ) {
+        setError(
+          "Please select at least one category."
+        );
+        return;
       }
 
-      return !answer;
-    });
+      setError("");
+      setStep(2);
+      setCategoryIndex(0);
+    };
 
-    if (unansweredQuestion) {
-      alert("Please answer all questions before continuing.");
+  const handleBack = () => {
+    if (step === 1) {
+      navigate("/signup");
       return;
     }
 
-    if (categoryIndex < selectedCategories.length - 1) {
-      setCategoryIndex((prev) => prev + 1);
-    } else {
-      const userProfile = {
-        categories: selectedCategories,
-        answers,
-      };
-
-      localStorage.setItem(
-        "mausam_user_profile",
-        JSON.stringify(userProfile)
+    if (categoryIndex > 0) {
+      setCategoryIndex(
+        (prev) => prev - 1
       );
-
-      console.log("Saved user profile:", userProfile);
-
-      navigate("/home");
+      setError("");
+      return;
     }
+
+    setStep(1);
+    setError("");
   };
 
-  const currentCategoryId = selectedCategories[categoryIndex];
+  const handleQuestionContinue =
+    async () => {
+      const currentCategory =
+        selectedCategories[
+          categoryIndex
+        ];
 
-  const currentCategory = categories.find(
-    (category) => category.id === currentCategoryId
-  );
+      const currentQuestions =
+        questions[
+          currentCategory
+        ] || [];
+
+      const unansweredQuestion =
+        currentQuestions.find(
+          (question) => {
+            const answer =
+              answers[question.id];
+
+            if (
+              question.type ===
+              "multi"
+            ) {
+              return (
+                !answer ||
+                answer.length === 0
+              );
+            }
+
+            return !answer;
+          }
+        );
+
+      if (unansweredQuestion) {
+        setError(
+          "Please answer all questions before continuing."
+        );
+        return;
+      }
+
+      setError("");
+
+      if (
+        categoryIndex <
+        selectedCategories.length - 1
+      ) {
+        setCategoryIndex(
+          (prev) => prev + 1
+        );
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        await saveUserPreferences(
+          selectedCategories,
+          answers
+        );
+
+        localStorage.setItem(
+          "mausam_user_profile",
+          JSON.stringify({
+            categories:
+              selectedCategories,
+            answers,
+          })
+        );
+
+        navigate("/location");
+      } catch (error) {
+        console.error(
+          "Failed to save preferences:",
+          error
+        );
+
+        setError(
+          error.message ||
+            "Unable to save your preferences."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  const currentCategoryId =
+    selectedCategories[
+      categoryIndex
+    ];
+
+  const currentCategory =
+    categories.find(
+      (category) =>
+        category.id ===
+        currentCategoryId
+    );
 
   const currentQuestions =
-    questions[currentCategoryId] || [];
+    questions[
+      currentCategoryId
+    ] || [];
 
   return (
     <div>
       {step === 1 && (
         <>
-          <h1>Personalize Your Mausam</h1>
+          <button
+            type="button"
+            onClick={() =>
+              navigate("/signup")
+            }
+          >
+            ← Back
+          </button>
+
+          <h1>
+            Personalize Your Mausam
+          </h1>
 
           <p>
-            What do you use weather information for?
+            What do you use weather
+            information for?
           </p>
 
-          {categories.map((category) => {
-            const selected = selectedCategories.includes(category.id);
+          {categories.map(
+            (category) => {
+              const selected =
+                selectedCategories.includes(
+                  category.id
+                );
 
-            return (
-              <div key={category.id}>
-                <button
-                  onClick={() => toggleCategory(category.id)}
+              return (
+                <div
+                  key={category.id}
                 >
-                  {selected ? "✓ " : ""}
-                  {category.title}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      toggleCategory(
+                        category.id
+                      )
+                    }
+                  >
+                    {selected
+                      ? "✓ "
+                      : ""}
+                    {
+                      category.title
+                    }
+                  </button>
 
-                <p>{category.description}</p>
-              </div>
-            );
-          })}
+                  <p>
+                    {
+                      category.description
+                    }
+                  </p>
+                </div>
+              );
+            }
+          )}
 
-          <button onClick={handleCategoryContinue}>
+          {error && (
+            <p>{error}</p>
+          )}
+
+          <button
+            type="button"
+            onClick={
+              handleCategoryContinue
+            }
+          >
             Continue
           </button>
         </>
       )}
 
-      {step === 2 && currentCategory && (
-        <>
-          <p>
-            Category {categoryIndex + 1} of{" "}
-            {selectedCategories.length}
-          </p>
+      {step === 2 &&
+        currentCategory && (
+          <>
+            <button
+              type="button"
+              onClick={handleBack}
+            >
+              ← Back
+            </button>
 
-          <h1>{currentCategory.title}</h1>
+            <p>
+              Category{" "}
+              {categoryIndex + 1} of{" "}
+              {
+                selectedCategories.length
+              }
+            </p>
 
-          {currentQuestions.map((question) => (
-            <div key={question.id}>
-              <h2>{question.question}</h2>
+            <h1>
+              {
+                currentCategory.title
+              }
+            </h1>
 
-              {question.type === "single" &&
-                question.options.map((option) => {
-                  const selected =
-                    answers[question.id] === option.id;
+            {currentQuestions.map(
+              (question) => (
+                <div
+                  key={question.id}
+                >
+                  <h2>
+                    {
+                      question.question
+                    }
+                  </h2>
 
-                  return (
-                    <button
-                      key={option.id}
-                      onClick={() =>
-                        setSingleAnswer(
+                  {question.type ===
+                    "single" &&
+                    question.options.map(
+                      (option) => {
+                        const selected =
+                          answers[
+                            question.id
+                          ] ===
+                          option.id;
+
+                        return (
+                          <button
+                            type="button"
+                            key={
+                              option.id
+                            }
+                            onClick={() =>
+                              setSingleAnswer(
+                                question.id,
+                                option.id
+                              )
+                            }
+                          >
+                            {selected
+                              ? "✓ "
+                              : ""}
+
+                            {
+                              option.label
+                            }
+                          </button>
+                        );
+                      }
+                    )}
+
+                  {question.type ===
+                    "multi" &&
+                    question.options.map(
+                      (option) => {
+                        const selected =
+                          answers[
+                            question.id
+                          ]?.includes(
+                            option.id
+                          );
+
+                        return (
+                          <button
+                            type="button"
+                            key={
+                              option.id
+                            }
+                            onClick={() =>
+                              toggleMultiAnswer(
+                                question.id,
+                                option.id
+                              )
+                            }
+                          >
+                            {selected
+                              ? "✓ "
+                              : ""}
+
+                            {
+                              option.label
+                            }
+                          </button>
+                        );
+                      }
+                    )}
+
+                  {question.type ===
+                    "text" && (
+                    <input
+                      type="text"
+                      placeholder={
+                        question.placeholder
+                      }
+                      value={
+                        answers[
+                          question.id
+                        ] || ""
+                      }
+                      onChange={(e) =>
+                        setTextAnswer(
                           question.id,
-                          option.id
+                          e.target.value
                         )
                       }
-                    >
-                      {selected ? "✓ " : ""}
-                      {option.label}
-                    </button>
-                  );
-                })}
+                    />
+                  )}
+                </div>
+              )
+            )}
 
-              {question.type === "multi" &&
-                question.options.map((option) => {
-                  const selected =
-                    answers[question.id]?.includes(option.id);
+            {error && (
+              <p>{error}</p>
+            )}
 
-                  return (
-                    <button
-                      key={option.id}
-                      onClick={() =>
-                        toggleMultiAnswer(
-                          question.id,
-                          option.id
-                        )
-                      }
-                    >
-                      {selected ? "✓ " : ""}
-                      {option.label}
-                    </button>
-                  );
-                })}
-
-              {question.type === "text" && (
-                <input
-                  type="text"
-                  placeholder={question.placeholder}
-                  value={answers[question.id] || ""}
-                  onChange={(e) =>
-                    setTextAnswer(
-                      question.id,
-                      e.target.value
-                    )
-                  }
-                />
-              )}
-            </div>
-          ))}
-
-          <button onClick={handleQuestionContinue}>
-            {categoryIndex === selectedCategories.length - 1
-              ? "Finish Setup"
-              : "Next"}
-          </button>
-        </>
-      )}
+            <button
+              type="button"
+              onClick={
+                handleQuestionContinue
+              }
+              disabled={loading}
+            >
+              {loading
+                ? "Saving..."
+                : categoryIndex ===
+                  selectedCategories.length -
+                    1
+                ? "Finish Setup"
+                : "Next"}
+            </button>
+          </>
+        )}
     </div>
   );
 }

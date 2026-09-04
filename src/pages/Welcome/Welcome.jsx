@@ -5,11 +5,30 @@ function Welcome() {
 
   return (
     <div>
-      <h1>Welcome to Mausam</h1>
-      <p>Weather that understands you.</p>
+      <h1>
+        Welcome to Mausam
+      </h1>
 
-      <button onClick={() => navigate("/onboarding")}>
+      <p>
+        Weather that understands you.
+      </p>
+
+      <button
+        type="button"
+        onClick={() =>
+          navigate("/signup")
+        }
+      >
         Get Started
+      </button>
+
+      <button
+        type="button"
+        onClick={() =>
+          navigate("/login")
+        }
+      >
+        Login
       </button>
     </div>
   );

@@ -31,91 +31,212 @@ import ComfortIndexWidget from "./ComfortIndexWidget";
 
 import GenericWidget from "./GenericWidget";
 
-function WidgetRenderer({ widget }) {
+function WidgetRenderer({
+  widget,
+  weather,
+  airQuality,
+  marine,
+}) {
   switch (widget) {
     case "currentWeather":
-      return <CurrentWeather />;
+      return (
+        <CurrentWeather
+          weather={weather}
+        />
+      );
 
     case "aqi":
-      return <AqiWidget />;
+      return (
+        <AqiWidget
+          airQuality={airQuality}
+        />
+      );
 
     case "rainProbability":
-      return <RainWidget />;
+      return (
+        <RainWidget
+          weather={weather}
+        />
+      );
 
     case "wind":
-      return <WindWidget />;
+      return (
+        <WindWidget
+          weather={weather}
+        />
+      );
 
     case "sunriseSunset":
-      return <SunWidget />;
+      return (
+        <SunWidget
+          weather={weather}
+        />
+      );
 
     case "forecast":
-      return <ForecastWidget />;
+      return (
+        <ForecastWidget
+          weather={weather}
+        />
+      );
 
     case "pollen":
-      return <PollenWidget />;
+      return (
+        <PollenWidget
+          airQuality={airQuality}
+        />
+      );
 
     case "uv":
-      return <UvWidget />;
+      return (
+        <UvWidget
+          weather={weather}
+          airQuality={airQuality}
+        />
+      );
 
     case "humidity":
-      return <HumidityWidget />;
+      return (
+        <HumidityWidget
+          weather={weather}
+        />
+      );
 
     case "heatAlert":
-      return <AlertWidget type="Heat Alert" />;
+      return (
+        <AlertWidget
+          type="Heat Alert"
+          weather={weather}
+        />
+      );
 
     case "severeWeather":
-      return <AlertWidget type="Severe Weather" />;
+      return (
+        <AlertWidget
+          type="Severe Weather"
+          weather={weather}
+        />
+      );
 
     case "rainAlert":
-      return <AlertWidget type="Rain Alert" />;
+      return (
+        <AlertWidget
+          type="Rain Alert"
+          weather={weather}
+        />
+      );
 
     case "stormAlert":
-      return <StormWidget />;
+      return (
+        <StormWidget
+          weather={weather}
+        />
+      );
 
     case "fogAlert":
-      return <FogWidget />;
+      return (
+        <FogWidget
+          weather={weather}
+        />
+      );
 
     case "bestRunningTime":
-      return <BestRunningWidget />;
+      return (
+        <BestRunningWidget
+          weather={weather}
+        />
+      );
 
     case "packingSuggestion":
-      return <PackingWidget />;
+      return (
+        <PackingWidget
+          weather={weather}
+        />
+      );
 
     case "rainfall":
-      return <RainfallWidget />;
+      return (
+        <RainfallWidget
+          weather={weather}
+        />
+      );
 
     case "soilMoisture":
-      return <SoilMoistureWidget />;
+      return (
+        <SoilMoistureWidget
+          weather={weather}
+        />
+      );
 
     case "cropGuidance":
-      return <CropGuidanceWidget />;
+      return (
+        <CropGuidanceWidget
+          weather={weather}
+        />
+      );
 
     case "frostAlert":
-      return <FrostWidget />;
+      return (
+        <FrostWidget
+          weather={weather}
+        />
+      );
 
     case "visibility":
-      return <VisibilityWidget />;
+      return (
+        <VisibilityWidget
+          weather={weather}
+        />
+      );
 
     case "schoolCommute":
-      return <SchoolCommuteWidget />;
+      return (
+        <SchoolCommuteWidget
+          weather={weather}
+        />
+      );
 
     case "tide":
-      return <TideWidget />;
+      return (
+        <TideWidget
+          marine={marine}
+        />
+      );
 
     case "waveHeight":
-      return <WaveHeightWidget />;
+      return (
+        <WaveHeightWidget
+          marine={marine}
+        />
+      );
 
     case "waterTemperature":
-      return <WaterTemperatureWidget />;
+      return (
+        <WaterTemperatureWidget
+          marine={marine}
+        />
+      );
 
     case "seaCondition":
-      return <SeaConditionWidget />;
+      return (
+        <SeaConditionWidget
+          marine={marine}
+        />
+      );
 
     case "comfortIndex":
-      return <ComfortIndexWidget />;
+      return (
+        <ComfortIndexWidget
+          weather={weather}
+        />
+      );
 
     default:
-      return <GenericWidget type={widget} />;
+      return (
+        <GenericWidget
+          type={widget}
+        />
+      );
   }
 }
 

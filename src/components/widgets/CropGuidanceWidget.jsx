@@ -1,8 +1,16 @@
-﻿function CropGuidanceWidget() {
+﻿import {
+  getCropGuidance,
+} from "../../features/recommendations/recommendationEngine";
+
+function CropGuidanceWidget({ weather }) {
+  const result =
+    getCropGuidance(weather);
+
   return (
     <div>
-      <h3>Crop Guidance</h3>
-      <p>Current conditions are suitable for regular crop care.</p>
+      <h3>{result.title}</h3>
+
+      <p>{result.value}</p>
     </div>
   );
 }

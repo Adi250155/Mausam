@@ -1,8 +1,16 @@
-﻿function PackingWidget() {
+﻿import {
+  getPackingSuggestion,
+} from "../../features/recommendations/recommendationEngine";
+
+function PackingWidget({ weather }) {
+  const result =
+    getPackingSuggestion(weather);
+
   return (
     <div>
-      <h3>Packing Suggestion</h3>
-      <p>Carry a rain jacket and light clothing.</p>
+      <h3>{result.title}</h3>
+
+      <p>{result.value}</p>
     </div>
   );
 }
