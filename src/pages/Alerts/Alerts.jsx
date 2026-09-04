@@ -1,163 +1,531 @@
-import {
-  useEffect,
-  useState,
-} from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import {
-  getSavedLocations,
-} from "../../services/user/profileService";
+import BottomNavigation from "../../components/navigation/BottomNavigation";
 
 import {
   getWeather,
+  getAirQuality,
 } from "../../services/weather/weatherService";
+
+import {
+  getCurrentLocation,
+} from "../../services/location/locationService";
 
 import {
   generateAlerts,
 } from "../../features/alerts/alertEngine";
 
-import BottomNavigation from "../../components/navigation/BottomNavigation";
+import {
+  getAlertPreferences,
+  saveAlertPreferences,
+} from "../../services/user/alertPreferenceService";
+
+const DEFAULT_PREFERENCES = {
+  rain: true,
+  storm: true,
+  heat: true,
+  aqi: true,
+  uv: true,
+  visibility: true,
+};
 
 function Alerts() {
-  const [
-    alerts,
-    setAlerts,
-  ] = useState([]);
+  const [weather, setWeather] =
+    useState(null);
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
+  const [airQuality, setAirQuality] =
+    useState(null);
 
-  const [
-    error,
-    setError,
-  ] = useState("");
+  const [preferences, setPreferences] =
+    useState(DEFAULT_PREFERENCES);
 
-  useEffect(() => {
-    async function loadAlerts() {
+  const [alerts, setAlerts] =
+    useState([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  const loadAlerts = useCallback(
+    async () => {
       try {
         setLoading(true);
         setError("");
 
-        const locations =
-          await getSavedLocations();
+        const location =
+          await getCurrentLocation();
 
-        if (!locations?.length) {
+        if (!location) {
           throw new Error(
-            "No saved location found."
+            "Location is unavailable."
           );
         }
 
-        const primary =
-          locations.find(
-            (location) =>
-              location.is_primary
-          ) ||
-          locations[0];
+        const [
+          weatherData,
+          airData,
+          preferenceData,
+        ] = await Promise.all([
+          getWeather(
+            location.latitude,
+            location.longitude
+          ),
+          getAirQuality(
+            location.latitude,
+            location.longitude
+          ),
+          getAlertPreferences(),
+        ]);
 
-        const weather =
-          await getWeather(
-            primary.latitude,
-            primary.longitude
+        setWeather(weatherData);
+        setAirQuality(airData);
+
+        const mergedPreferences = {
+          ...DEFAULT_PREFERENCES,
+          ...preferenceData,
+        };
+
+        setPreferences(
+          mergedPreferences
+        );
+
+        const generatedAlerts =
+          generateAlerts(
+            weatherData,
+            airData,
+            mergedPreferences
           );
 
         setAlerts(
-          generateAlerts(
-            weather
-          )
+          generatedAlerts
         );
-      } catch (err) {
+      } catch (loadError) {
         console.error(
-          "Alerts error:",
-          err
+          "Alerts loading failed:",
+          loadError
         );
 
         setError(
-          err.message ||
+          loadError?.message ||
             "Unable to load alerts."
         );
       } finally {
         setLoading(false);
       }
-    }
+    },
+    []
+  );
 
+  useEffect(() => {
     loadAlerts();
-  }, []);
+  }, [loadAlerts]);
 
-  if (loading) {
+  async function handleToggle(
+    key
+  ) {
+    const nextPreferences = {
+      ...preferences,
+      [key]: !preferences[key],
+    };
+
+    setPreferences(
+      nextPreferences
+    );
+
+    try {
+      setSaving(true);
+
+      const saved =
+        await saveAlertPreferences(
+          nextPreferences
+        );
+
+      setPreferences({
+        ...DEFAULT_PREFERENCES,
+        ...saved,
+      });
+
+      const updatedAlerts =
+        generateAlerts(
+          weather,
+          airQuality,
+          saved
+        );
+
+      setAlerts(
+        updatedAlerts
+      );
+    } catch (saveError) {
+      console.error(
+        "Alert preference save failed:",
+        saveError
+      );
+
+      setPreferences(
+        preferences
+      );
+
+      setError(
+        saveError?.message ||
+          "Unable to save alert preference."
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function getAlertIcon(type) {
+    const icons = {
+      rain: "🌧️",
+      storm: "⛈️",
+      wind: "💨",
+      visibility: "🌫️",
+      heat: "🔥",
+      aqi: "😷",
+    };
+
     return (
-      <div>
-        <h1>
-          Loading alerts...
-        </h1>
-
-        <BottomNavigation />
-      </div>
+      icons[type] ||
+      "⚠️"
     );
   }
 
-  if (error) {
-    return (
-      <div>
-        <h1>
-          Alerts
-        </h1>
-
-        <p>
-          {error}
-        </p>
-
-        <BottomNavigation />
-      </div>
-    );
+  function getSeverityClass(
+    severity
+  ) {
+    return `alert-item alert-${severity || "medium"}`;
   }
 
   return (
-    <div>
-      <header>
-        <h1>
-          Weather Alerts
-        </h1>
+    <div className="mausam-page">
+      <header className="page-header">
+        <div>
+          <span className="weather-eyebrow">
+            MAUSAM ALERTS
+          </span>
 
-        <p>
-          Weather insights generated
-          from available Open-Meteo data.
-        </p>
+          <h1>
+            Weather Alerts
+          </h1>
+
+          <p>
+            Important weather changes
+            for your location.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={loadAlerts}
+          disabled={loading}
+        >
+          {loading
+            ? "Refreshing..."
+            : "Refresh"}
+        </button>
       </header>
 
-      <main>
-        {alerts.length === 0 ? (
-          <section>
-            <h2>
-              No Significant Alerts
-            </h2>
+      <main className="page-content alerts-page">
+        {error && (
+          <div className="error-message">
+            {error}
+          </div>
+        )}
 
-            <p>
-              No significant weather
-              conditions detected right now.
-            </p>
+        {loading ? (
+          <section className="settings-card">
+            <div className="loading-state">
+              Checking current weather
+              conditions...
+            </div>
           </section>
         ) : (
-          alerts.map(
-            (alert, index) => (
-              <article
-                key={`${alert.type}-${index}`}
-              >
-                <h2>
-                  {alert.title}
-                </h2>
+          <>
+            <section className="settings-card">
+              <div className="section-heading">
+                <div>
+                  <span className="section-kicker">
+                    LIVE STATUS
+                  </span>
 
-                <p>
-                  {alert.message}
-                </p>
+                  <h2>
+                    Active Alerts
+                  </h2>
+                </div>
 
-                <small>
-                  Severity:{" "}
-                  {alert.severity}
-                </small>
-              </article>
-            )
-          )
+                <span className="alert-count">
+                  {alerts.length}
+                </span>
+              </div>
+
+              {!alerts.length ? (
+                <div className="empty-state">
+                  <div className="empty-state-icon">
+                    ✅
+                  </div>
+
+                  <h3>
+                    No active alerts
+                  </h3>
+
+                  <p>
+                    Weather conditions look
+                    normal for your current
+                    location.
+                  </p>
+                </div>
+              ) : (
+                <div className="alerts-list">
+                  {alerts.map(
+                    (alert, index) => (
+                      <article
+                        key={`${alert.type}-${index}`}
+                        className={getSeverityClass(
+                          alert.severity
+                        )}
+                      >
+                        <div className="alert-icon">
+                          {getAlertIcon(
+                            alert.type
+                          )}
+                        </div>
+
+                        <div className="alert-content">
+                          <div className="alert-title-row">
+                            <h3>
+                              {alert.title}
+                            </h3>
+
+                            <span className="alert-severity">
+                              {alert.severity}
+                            </span>
+                          </div>
+
+                          <p>
+                            {alert.message ||
+                              alert.description ||
+                              "Weather conditions require attention."}
+                          </p>
+                        </div>
+                      </article>
+                    )
+                  )}
+                </div>
+              )}
+            </section>
+
+            <section className="settings-card">
+              <div className="section-heading">
+                <div>
+                  <span className="section-kicker">
+                    PERSONALIZATION
+                  </span>
+
+                  <h2>
+                    Alert Preferences
+                  </h2>
+
+                  <p>
+                    Choose which conditions
+                    Mausam should monitor.
+                  </p>
+                </div>
+              </div>
+
+              <div className="alert-settings-list">
+                <div className="alert-setting">
+                  <div>
+                    <strong>
+                      🌧️ Rain
+                    </strong>
+
+                    <span>
+                      Rain and heavy rainfall
+                      warnings
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className={`toggle ${
+                      preferences.rain
+                        ? "toggle-on"
+                        : ""
+                    }`}
+                    onClick={() =>
+                      handleToggle(
+                        "rain"
+                      )
+                    }
+                    disabled={saving}
+                    aria-label="Toggle rain alerts"
+                  >
+                    <span />
+                  </button>
+                </div>
+
+                <div className="alert-setting">
+                  <div>
+                    <strong>
+                      ⛈️ Storm
+                    </strong>
+
+                    <span>
+                      Thunderstorm and severe
+                      weather warnings
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className={`toggle ${
+                      preferences.storm
+                        ? "toggle-on"
+                        : ""
+                    }`}
+                    onClick={() =>
+                      handleToggle(
+                        "storm"
+                      )
+                    }
+                    disabled={saving}
+                    aria-label="Toggle storm alerts"
+                  >
+                    <span />
+                  </button>
+                </div>
+
+                <div className="alert-setting">
+                  <div>
+                    <strong>
+                      🔥 Heat
+                    </strong>
+
+                    <span>
+                      Extreme temperature
+                      warnings
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className={`toggle ${
+                      preferences.heat
+                        ? "toggle-on"
+                        : ""
+                    }`}
+                    onClick={() =>
+                      handleToggle(
+                        "heat"
+                      )
+                    }
+                    disabled={saving}
+                    aria-label="Toggle heat alerts"
+                  >
+                    <span />
+                  </button>
+                </div>
+
+                <div className="alert-setting">
+                  <div>
+                    <strong>
+                      😷 Air Quality
+                    </strong>
+
+                    <span>
+                      Poor AQI notifications
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className={`toggle ${
+                      preferences.aqi
+                        ? "toggle-on"
+                        : ""
+                    }`}
+                    onClick={() =>
+                      handleToggle(
+                        "aqi"
+                      )
+                    }
+                    disabled={saving}
+                    aria-label="Toggle AQI alerts"
+                  >
+                    <span />
+                  </button>
+                </div>
+
+                <div className="alert-setting">
+                  <div>
+                    <strong>
+                      🌫️ Visibility
+                    </strong>
+
+                    <span>
+                      Fog and low visibility
+                      warnings
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className={`toggle ${
+                      preferences.visibility
+                        ? "toggle-on"
+                        : ""
+                    }`}
+                    onClick={() =>
+                      handleToggle(
+                        "visibility"
+                      )
+                    }
+                    disabled={saving}
+                    aria-label="Toggle visibility alerts"
+                  >
+                    <span />
+                  </button>
+                </div>
+
+                <div className="alert-setting">
+                  <div>
+                    <strong>
+                      ☀️ UV
+                    </strong>
+
+                    <span>
+                      High UV exposure
+                      warnings
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className={`toggle ${
+                      preferences.uv
+                        ? "toggle-on"
+                        : ""
+                    }`}
+                    onClick={() =>
+                      handleToggle(
+                        "uv"
+                      )
+                    }
+                    disabled={saving}
+                    aria-label="Toggle UV alerts"
+                  >
+                    <span />
+                  </button>
+                </div>
+              </div>
+            </section>
+          </>
         )}
       </main>
 

@@ -16,6 +16,11 @@ import {
 } from "../../services/user/profileService";
 
 import {
+  getAlertPreferences,
+  saveAlertPreferences,
+} from "../../services/user/alertPreferenceService";
+
+import {
   signOut,
 } from "../../services/auth/authService";
 
@@ -23,43 +28,45 @@ import {
   categories,
 } from "../../personalization/categories";
 
+import BottomNavigation from "../../components/navigation/BottomNavigation";
+
 function Profile() {
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
+
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [preferences, setPreferences] =
+    useState(null);
 
   const [
-    user,
-    setUser,
-  ] = useState(null);
+    alertPreferences,
+    setAlertPreferences,
+  ] = useState({
+    rain: true,
+    storm: true,
+    heat: true,
+    aqi: true,
+    uv: true,
+    visibility: true,
+  });
 
-  const [
-    profile,
-    setProfile,
-  ] = useState(null);
-
-  const [
-    preferences,
-    setPreferences,
-  ] = useState(null);
-
-  const [
-    name,
-    setName,
-  ] = useState("");
+  const [name, setName] =
+    useState("");
 
   const [
     selectedCategories,
     setSelectedCategories,
   ] = useState([]);
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
+
+  const [saving, setSaving] =
+    useState(false);
 
   const [
-    saving,
-    setSaving,
+    savingAlerts,
+    setSavingAlerts,
   ] = useState(false);
 
   const [
@@ -67,15 +74,11 @@ function Profile() {
     setLoggingOut,
   ] = useState(false);
 
-  const [
-    message,
-    setMessage,
-  ] = useState("");
+  const [message, setMessage] =
+    useState("");
 
-  const [
-    error,
-    setError,
-  ] = useState("");
+  const [error, setError] =
+    useState("");
 
   useEffect(() => {
     async function loadProfile() {
@@ -87,22 +90,22 @@ function Profile() {
           currentUser,
           userProfile,
           userPreferences,
+          userAlertPreferences,
         ] = await Promise.all([
           getCurrentUser(),
           getUserProfile(),
           getUserPreferences(),
+          getAlertPreferences(),
         ]);
 
-        setUser(
-          currentUser
-        );
-
-        setProfile(
-          userProfile
-        );
-
+        setUser(currentUser);
+        setProfile(userProfile);
         setPreferences(
           userPreferences
+        );
+
+        setAlertPreferences(
+          userAlertPreferences
         );
 
         setName(
@@ -143,9 +146,8 @@ function Profile() {
           )
         ) {
           return current.filter(
-            (item) =>
-              item !==
-              categoryId
+            (id) =>
+              id !== categoryId
           );
         }
 
@@ -157,7 +159,19 @@ function Profile() {
     );
   }
 
-  async function handleSave() {
+  function toggleAlert(
+    alertType
+  ) {
+    setAlertPreferences(
+      (current) => ({
+        ...current,
+        [alertType]:
+          !current[alertType],
+      })
+    );
+  }
+
+  async function handleSaveProfile() {
     if (
       selectedCategories.length ===
       0
@@ -165,6 +179,7 @@ function Profile() {
       setError(
         "Select at least one interest."
       );
+
       return;
     }
 
@@ -211,6 +226,51 @@ function Profile() {
     }
   }
 
+  async function handleSaveAlerts() {
+    try {
+      setSavingAlerts(true);
+      setError("");
+      setMessage("");
+
+      const updated =
+        await saveAlertPreferences(
+          alertPreferences
+        );
+
+      setAlertPreferences(
+        updated
+      );
+
+      setMessage(
+        "Alert preferences saved."
+      );
+    } catch (err) {
+      console.error(
+        "Alert preference error:",
+        err
+      );
+
+      setError(
+        err.message ||
+          "Unable to save alert preferences."
+      );
+    } finally {
+      setSavingAlerts(
+        false
+      );
+    }
+  }
+
+  function resetInterests() {
+    setSelectedCategories(
+      []
+    );
+
+    setMessage(
+      "Select your new interests and save the profile."
+    );
+  }
+
   async function handleLogout() {
     try {
       setLoggingOut(true);
@@ -232,186 +292,310 @@ function Profile() {
           "Unable to logout."
       );
     } finally {
-      setLoggingOut(false);
+      setLoggingOut(
+        false
+      );
     }
-  }
-
-  function handleResetPersonalization() {
-    setSelectedCategories(
-      []
-    );
-
-    setMessage(
-      "Select your new interests and save the profile."
-    );
   }
 
   if (loading) {
     return (
-      <div>
-        <h1>
-          Profile
-        </h1>
+      <div className="app-state">
+        <div className="state-loader">
+          <span>◉</span>
 
-        <p>
-          Loading profile...
-        </p>
+          <h1>
+            Loading profile
+          </h1>
+
+          <p>
+            Preparing your settings...
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
-      <header>
-        <h1>
-          Profile
-        </h1>
+    <div className="mausam-page">
+      <header className="page-header">
+        <span className="page-kicker">
+          ACCOUNT
+        </span>
+
+        <h1>Profile</h1>
 
         <p>
-          Manage your account and
-          weather personalization.
+          Manage personalization and
+          alert preferences.
         </p>
       </header>
 
-      {message && (
-        <p>{message}</p>
-      )}
+      <main className="page-content">
+        {message && (
+          <div className="success-message">
+            {message}
+          </div>
+        )}
 
-      {error && (
-        <p>{error}</p>
-      )}
+        {error && (
+          <div className="widget-error">
+            {error}
+          </div>
+        )}
 
-      <section>
-        <h2>
-          Account
-        </h2>
+        <section className="settings-card">
+          <div className="settings-heading">
+            <span className="settings-icon">
+              👤
+            </span>
 
-        <p>
-          Email:
-          {" "}
-          {user?.email ||
-            "Unavailable"}
-        </p>
+            <div>
+              <h2>
+                Account
+              </h2>
 
-        <label>
-          Name
+              <p>
+                Your account information
+              </p>
+            </div>
+          </div>
 
-          <input
-            type="text"
-            value={name}
-            onChange={(event) =>
-              setName(
-                event.target.value
-              )
-            }
-            placeholder="Your name"
-          />
-        </label>
-      </section>
+          <div className="setting-field">
+            <label>
+              Email
+            </label>
 
-      <section>
-        <h2>
-          My Interests
-        </h2>
+            <input
+              type="email"
+              value={
+                user?.email || ""
+              }
+              disabled
+            />
+          </div>
 
-        {categories.map(
-          (category) => {
-            const selected =
-              selectedCategories.includes(
-                category.id
-              );
+          <div className="setting-field">
+            <label>
+              Name
+            </label>
 
-            return (
+            <input
+              type="text"
+              value={name}
+              onChange={(event) =>
+                setName(
+                  event.target.value
+                )
+              }
+              placeholder="Your name"
+            />
+          </div>
+        </section>
+
+        <section className="settings-card">
+          <div className="settings-heading">
+            <span className="settings-icon">
+              ✨
+            </span>
+
+            <div>
+              <h2>
+                Interests
+              </h2>
+
+              <p>
+                Control what appears on
+                your home screen.
+              </p>
+            </div>
+          </div>
+
+          <div className="profile-category-grid">
+            {categories.map(
+              (category) => {
+                const selected =
+                  selectedCategories.includes(
+                    category.id
+                  );
+
+                return (
+                  <button
+                    type="button"
+                    key={
+                      category.id
+                    }
+                    className={
+                      selected
+                        ? "profile-category selected"
+                        : "profile-category"
+                    }
+                    onClick={() =>
+                      toggleCategory(
+                        category.id
+                      )
+                    }
+                  >
+                    <strong>
+                      {selected
+                        ? "✓ "
+                        : ""}
+                      {
+                        category.title
+                      }
+                    </strong>
+
+                    <small>
+                      {
+                        category.description
+                      }
+                    </small>
+                  </button>
+                );
+              }
+            )}
+          </div>
+
+          <div className="settings-actions">
+            <button
+              type="button"
+              onClick={
+                resetInterests
+              }
+            >
+              Reset
+            </button>
+
+            <button
+              type="button"
+              onClick={
+                handleSaveProfile
+              }
+              disabled={saving}
+            >
+              {saving
+                ? "Saving..."
+                : "Save Profile"}
+            </button>
+          </div>
+        </section>
+
+        <section className="settings-card">
+          <div className="settings-heading">
+            <span className="settings-icon">
+              🔔
+            </span>
+
+            <div>
+              <h2>
+                Alert Preferences
+              </h2>
+
+              <p>
+                Choose which weather alerts
+                you care about.
+              </p>
+            </div>
+          </div>
+
+          {[
+            ["rain", "Rain Alerts"],
+            ["storm", "Storm Alerts"],
+            ["heat", "Heat Alerts"],
+            ["aqi", "Air Quality Alerts"],
+            ["uv", "UV Alerts"],
+            [
+              "visibility",
+              "Visibility Alerts",
+            ],
+          ].map(
+            ([key, title]) => (
               <button
                 type="button"
-                key={category.id}
+                key={key}
+                className="alert-setting"
                 onClick={() =>
-                  toggleCategory(
-                    category.id
+                  toggleAlert(
+                    key
                   )
                 }
               >
-                {selected
-                  ? "✓ "
-                  : ""}
-                {category.title}
+                <span>
+                  {title}
+                </span>
+
+                <span
+                  className={
+                    alertPreferences[
+                      key
+                    ]
+                      ? "toggle toggle-on"
+                      : "toggle"
+                  }
+                >
+                  <span />
+                </span>
               </button>
-            );
-          }
-        )}
-      </section>
-
-      <section>
-        <button
-          type="button"
-          onClick={
-            handleResetPersonalization
-          }
-        >
-          Reset Interests
-        </button>
-
-        <button
-          type="button"
-          onClick={
-            handleSave
-          }
-          disabled={saving}
-        >
-          {saving
-            ? "Saving..."
-            : "Save Changes"}
-        </button>
-      </section>
-
-      <section>
-        <button
-          type="button"
-          onClick={() =>
-            navigate(
-              "/saved-locations"
             )
-          }
-        >
-          Manage Saved Locations
-        </button>
+          )}
 
-        <button
-          type="button"
-          onClick={() =>
-            navigate(
-              "/alerts"
-            )
-          }
-        >
-          Weather Alerts
-        </button>
-      </section>
+          <button
+            type="button"
+            onClick={
+              handleSaveAlerts
+            }
+            disabled={
+              savingAlerts
+            }
+          >
+            {savingAlerts
+              ? "Saving..."
+              : "Save Alert Preferences"}
+          </button>
+        </section>
 
-      <section>
-        <button
-          type="button"
-          onClick={
-            handleLogout
-          }
-          disabled={
-            loggingOut
-          }
-        >
-          {loggingOut
-            ? "Logging out..."
-            : "Logout"}
-        </button>
-      </section>
+        <section className="settings-card">
+          <button
+            type="button"
+            onClick={() =>
+              navigate(
+                "/saved-locations"
+              )
+            }
+          >
+            Manage Saved Locations
+          </button>
 
-      <button
-        type="button"
-        onClick={() =>
-          navigate("/home")
-        }
-      >
-        Back to Home
-      </button>
+          <button
+            type="button"
+            onClick={() =>
+              navigate(
+                "/alerts"
+              )
+            }
+          >
+            View Alerts
+          </button>
+        </section>
+
+        <section className="settings-card danger-card">
+          <button
+            type="button"
+            onClick={
+              handleLogout
+            }
+            disabled={
+              loggingOut
+            }
+          >
+            {loggingOut
+              ? "Logging out..."
+              : "Logout"}
+          </button>
+        </section>
+      </main>
+
+      <BottomNavigation />
     </div>
   );
 }
