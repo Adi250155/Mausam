@@ -1,33 +1,8 @@
 import {
-  getIMDCurrentWeather,
-  getIMDForecast,
-  getIMDWarnings,
-  getIMDNowcast,
-  getIMDRainfall,
-  getIMDSunMoon,
-} from "./providers/imdService";
-
-import {
-  getCPCBAirQuality,
-} from "./providers/cpcbService";
-
-import {
-  getINCOISMarineData,
-} from "./providers/incoisService";
-
-import {
   getOpenMeteoWeather,
   getOpenMeteoAirQuality,
   getOpenMeteoMarineWeather,
 } from "./providers/openMeteoService";
-
-import {
-  normalizeMausamWeather,
-} from "./weatherNormalizer";
-
-import {
-  findIMDLocation,
-} from "../location/imdLocationService";
 
 import {
   getWeatherCache,
@@ -42,7 +17,7 @@ async function safeCall(
     return await callback();
   } catch (error) {
     console.warn(
-      "Provider unavailable:",
+      "Open-Meteo provider error:",
       error?.message || error
     );
 
@@ -74,7 +49,7 @@ export async function getWeather(
     return cached;
   }
 
-  const openMeteo =
+  const rawWeather =
     await safeCall(
       () =>
         getOpenMeteoWeather(
@@ -84,117 +59,51 @@ export async function getWeather(
       null
     );
 
-  const imdLocation =
-    await safeCall(
-      () =>
-        findIMDLocation(
-          latitude,
-          longitude
-        ),
-      null
+  if (!rawWeather) {
+    throw new Error(
+      "Unable to load weather data."
     );
-
-  let imdCurrent = null;
-  let imdForecast = [];
-  let imdWarnings = [];
-  let imdNowcast = null;
-  let imdRainfall = null;
-  let imdSunMoon = null;
-
-  if (
-    imdLocation?.imdStationId
-  ) {
-    imdCurrent =
-      await safeCall(
-        () =>
-          getIMDCurrentWeather(
-            imdLocation.imdStationId
-          ),
-        null
-      );
-
-    imdForecast =
-      await safeCall(
-        () =>
-          getIMDForecast(
-            imdLocation.imdStationId
-          ),
-        []
-      );
   }
 
-  if (
-    imdLocation?.imdDistrictId
-  ) {
-    imdWarnings =
-      await safeCall(
-        () =>
-          getIMDWarnings(
-            imdLocation.imdDistrictId
-          ),
-        []
-      );
+  const data = {
+    ...rawWeather,
 
-    imdNowcast =
-      await safeCall(
-        () =>
-          getIMDNowcast(
-            imdLocation.imdDistrictId
-          ),
-        null
-      );
+    location: {
+      latitude,
+      longitude,
+    },
 
-    imdRainfall =
-      await safeCall(
-        () =>
-          getIMDRainfall(
-            imdLocation.imdDistrictId
-          ),
-        null
-      );
-  }
+    source: {
+      currentWeather: "Open-Meteo",
+      forecast: "Open-Meteo",
+      weather: "Open-Meteo",
+      airQuality: "Open-Meteo",
+      marine: "Open-Meteo",
+      warnings: "Unavailable",
+    },
 
-  if (imdLocation) {
-    imdSunMoon =
-      await safeCall(
-        () =>
-          getIMDSunMoon(
-            latitude,
-            longitude
-          ),
-        null
-      );
-  }
+    official: {
+      weather: false,
+      forecast: false,
+      airQuality: false,
+      marine: false,
+      warnings: false,
+    },
 
-  const normalized =
-    normalizeMausamWeather({
-      location: {
-        latitude,
-        longitude,
-        imd: imdLocation,
-      },
+    warnings: [],
 
-      imd: {
-        current: imdCurrent,
-        forecast: imdForecast,
-        nowcast: imdNowcast,
-        rainfall: imdRainfall,
-        sunMoon: imdSunMoon,
-      },
-
-      imdWarnings,
-
-      openMeteo,
-    });
+    updatedAt:
+      new Date().toISOString(),
+  };
 
   setWeatherCache(
     latitude,
     longitude,
-    normalized,
+    data,
     "weather"
   );
 
-  return normalized;
+  return data;
 }
 
 export async function getAirQuality(
@@ -221,47 +130,40 @@ export async function getAirQuality(
     return cached;
   }
 
-  const [
-    cpcb,
-    openMeteoAir,
-  ] = await Promise.all([
-    safeCall(
-      () =>
-        getCPCBAirQuality(
-          latitude,
-          longitude
-        ),
-      null
-    ),
-
-    safeCall(
+  const data =
+    await safeCall(
       () =>
         getOpenMeteoAirQuality(
           latitude,
           longitude
         ),
       null
-    ),
-  ]);
+    );
 
-  const normalized =
-    normalizeMausamWeather({
-      cpcb,
+  if (!data) {
+    throw new Error(
+      "Unable to load air quality data."
+    );
+  }
 
-      openMeteo: {
-        airQuality:
-          openMeteoAir,
-      },
-    });
+  const normalized = {
+    ...data,
+
+    source:
+      "Open-Meteo",
+
+    official:
+      false,
+  };
 
   setWeatherCache(
     latitude,
     longitude,
-    normalized.airQuality,
+    normalized,
     "air-quality"
   );
 
-  return normalized.airQuality;
+  return normalized;
 }
 
 export async function getMarineWeather(
@@ -288,45 +190,38 @@ export async function getMarineWeather(
     return cached;
   }
 
-  const [
-    incois,
-    openMeteoMarine,
-  ] = await Promise.all([
-    safeCall(
-      () =>
-        getINCOISMarineData(
-          latitude,
-          longitude
-        ),
-      null
-    ),
-
-    safeCall(
+  const data =
+    await safeCall(
       () =>
         getOpenMeteoMarineWeather(
           latitude,
           longitude
         ),
       null
-    ),
-  ]);
+    );
 
-  const normalized =
-    normalizeMausamWeather({
-      incois,
+  if (!data) {
+    throw new Error(
+      "Unable to load marine data."
+    );
+  }
 
-      openMeteo: {
-        marine:
-          openMeteoMarine,
-      },
-    });
+  const normalized = {
+    ...data,
+
+    source:
+      "Open-Meteo",
+
+    official:
+      false,
+  };
 
   setWeatherCache(
     latitude,
     longitude,
-    normalized.marine,
+    normalized,
     "marine"
   );
 
-  return normalized.marine;
+  return normalized;
 }

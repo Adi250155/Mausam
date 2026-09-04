@@ -1,78 +1,93 @@
-﻿function PollenWidget({ airQuality }) {
-  const current =
-    airQuality?.current;
-
+﻿function getPollenValue(
+  airQuality
+) {
   const hourly =
     airQuality?.hourly;
 
-  const pollen = {
-    grass:
-      hourly?.grass_pollen?.[0] ?? null,
+  if (!hourly) {
+    return null;
+  }
 
-    birch:
-      hourly?.birch_pollen?.[0] ?? null,
-
-    mugwort:
-      hourly?.mugwort_pollen?.[0] ?? null,
-
-    olive:
-      hourly?.olive_pollen?.[0] ?? null,
-  };
-
-  const values = Object.values(pollen).filter(
-    (value) => value != null
+  const values = [
+    hourly.grass_pollen?.[0],
+    hourly.birch_pollen?.[0],
+    hourly.mugwort_pollen?.[0],
+    hourly.olive_pollen?.[0],
+  ].filter(
+    (value) =>
+      value !== undefined &&
+      value !== null &&
+      Number.isFinite(
+        Number(value)
+      )
   );
 
-  const maxPollen = values.length
-    ? Math.max(...values)
-    : null;
-
-  let level = "Low";
-
-  if (maxPollen != null && maxPollen >= 10) {
-    level = "Moderate";
+  if (!values.length) {
+    return null;
   }
 
-  if (maxPollen != null && maxPollen >= 50) {
-    level = "High";
+  return Math.max(
+    ...values.map(Number)
+  );
+}
+
+function getPollenStatus(
+  value
+) {
+  if (value == null) {
+    return "Unavailable";
   }
+
+  if (value < 10) {
+    return "Low";
+  }
+
+  if (value < 50) {
+    return "Moderate";
+  }
+
+  if (value < 100) {
+    return "High";
+  }
+
+  return "Very High";
+}
+
+function PollenWidget({
+  airQuality,
+}) {
+  const value =
+    getPollenValue(
+      airQuality
+    );
+
+  const status =
+    getPollenStatus(
+      value
+    );
 
   return (
-    <div>
-      <h3>Pollen</h3>
+    <section>
+      <h2>
+        Pollen
+      </h2>
 
-      <h2>{level}</h2>
+      <h1>
+        {status}
+      </h1>
 
-      {pollen.grass != null && (
+      {value == null ? (
         <p>
-          Grass: {pollen.grass.toFixed(1)}
+          Pollen data unavailable.
+        </p>
+      ) : (
+        <p>
+          Estimated pollen level:
+          {" "}
+          {value}
         </p>
       )}
-
-      {pollen.birch != null && (
-        <p>
-          Birch: {pollen.birch.toFixed(1)}
-        </p>
-      )}
-
-      {pollen.mugwort != null && (
-        <p>
-          Mugwort:{" "}
-          {pollen.mugwort.toFixed(1)}
-        </p>
-      )}
-
-      {pollen.olive != null && (
-        <p>
-          Olive:{" "}
-          {pollen.olive.toFixed(1)}
-        </p>
-      )}
-
-      {!values.length && (
-        <p>Pollen data unavailable.</p>
-      )}
-    </div>
+    </section>
   );
 }
 

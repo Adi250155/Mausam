@@ -1,18 +1,30 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  useNavigate,
+} from "react-router-dom";
 
 import {
   getCurrentLocation,
   searchLocations,
 } from "../../services/location/locationService";
 
-import { saveLocation } from "../../services/user/profileService";
+import {
+  saveLocation,
+} from "../../services/user/profileService";
 
 function Location() {
   const navigate = useNavigate();
 
-  const [search, setSearch] = useState("");
-  const [results, setResults] = useState([]);
+  const [search, setSearch] =
+    useState("");
+
+  const [results, setResults] =
+    useState([]);
+
   const [selectedLocation, setSelectedLocation] =
     useState(null);
 
@@ -22,21 +34,36 @@ function Location() {
   const [loadingSearch, setLoadingSearch] =
     useState(false);
 
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [saving, setSaving] =
+    useState(false);
 
-  const handleCurrentLocation = async () => {
+  const [error, setError] =
+    useState("");
+
+  useEffect(() => {
+    setError("");
+  }, []);
+
+  async function handleCurrentLocation() {
     try {
       setLoadingCurrent(true);
       setError("");
 
-      const location = await getCurrentLocation();
+      const location =
+        await getCurrentLocation();
 
       setSelectedLocation({
         name: "Current Location",
-        latitude: location.latitude,
-        longitude: location.longitude,
+        latitude:
+          location.latitude,
+        longitude:
+          location.longitude,
+        accuracy:
+          location.accuracy,
       });
+
+      setResults([]);
+      setSearch("");
     } catch (err) {
       console.error(
         "Current location error:",
@@ -50,13 +77,18 @@ function Location() {
     } finally {
       setLoadingCurrent(false);
     }
-  };
+  }
 
-  const handleSearch = async (event) => {
+  async function handleSearch(
+    event
+  ) {
     event.preventDefault();
 
     if (!search.trim()) {
       setResults([]);
+      setError(
+        "Enter a city or place name."
+      );
       return;
     }
 
@@ -65,9 +97,21 @@ function Location() {
       setError("");
 
       const locations =
-        await searchLocations(search);
+        await searchLocations(
+          search
+        );
 
-      setResults(locations);
+      if (!locations.length) {
+        setResults([]);
+        setError(
+          "No matching locations found."
+        );
+        return;
+      }
+
+      setResults(
+        locations
+      );
     } catch (err) {
       console.error(
         "Location search error:",
@@ -79,21 +123,34 @@ function Location() {
           "Unable to search locations."
       );
     } finally {
-      setLoadingSearch(false);
+      setLoadingSearch(
+        false
+      );
     }
-  };
+  }
 
-  const handleSelectLocation = (location) => {
-    setSelectedLocation(location);
+  function handleSelectLocation(
+    location
+  ) {
+    setSelectedLocation(
+      location
+    );
+
     setResults([]);
-    setSearch(location.name);
-  };
 
-  const handleContinue = async () => {
+    setSearch(
+      location.name
+    );
+
+    setError("");
+  }
+
+  async function handleContinue() {
     if (!selectedLocation) {
       setError(
         "Please select a location first."
       );
+
       return;
     }
 
@@ -101,7 +158,9 @@ function Location() {
       setSaving(true);
       setError("");
 
-      await saveLocation(selectedLocation);
+      await saveLocation(
+        selectedLocation
+      );
 
       navigate("/home", {
         replace: true,
@@ -119,115 +178,213 @@ function Location() {
     } finally {
       setSaving(false);
     }
-  };
+  }
 
   return (
     <div>
-      <h1>Choose Your Location</h1>
+      <header>
+        <p>
+          Step 2 of 2
+        </p>
 
-      <p>
-        Select your current location or search
-        for a city.
-      </p>
-
-      <button
-        type="button"
-        onClick={handleCurrentLocation}
-        disabled={loadingCurrent}
-      >
-        {loadingCurrent
-          ? "Getting location..."
-          : "Use Current Location"}
-      </button>
-
-      <hr />
-
-      <form onSubmit={handleSearch}>
-        <input
-          type="text"
-          placeholder="Search city"
-          value={search}
-          onChange={(event) =>
-            setSearch(event.target.value)
-          }
+        <progress
+          value="2"
+          max="2"
         />
 
-        <button
-          type="submit"
-          disabled={loadingSearch}
-        >
-          {loadingSearch
-            ? "Searching..."
-            : "Search"}
-        </button>
-      </form>
+        <h1>
+          Where are you?
+        </h1>
 
-      {results.length > 0 && (
-        <div>
-          <h3>Search Results</h3>
+        <p>
+          Mausam uses your location to
+          provide relevant weather
+          information.
+        </p>
+      </header>
 
-          {results.map(
-            (location, index) => (
-              <button
-                type="button"
-                key={`${location.latitude}-${location.longitude}-${index}`}
-                onClick={() =>
-                  handleSelectLocation(
-                    location
-                  )
+      <main>
+        <section>
+          <button
+            type="button"
+            onClick={
+              handleCurrentLocation
+            }
+            disabled={
+              loadingCurrent ||
+              saving
+            }
+          >
+            {loadingCurrent
+              ? "Getting your location..."
+              : "📍 Use Current Location"}
+          </button>
+        </section>
+
+        <section>
+          <h2>
+            Search a place
+          </h2>
+
+          <form
+            onSubmit={
+              handleSearch
+            }
+          >
+            <input
+              type="search"
+              placeholder="Search city, town or place"
+              value={search}
+              onChange={(event) =>
+                setSearch(
+                  event.target.value
+                )
+              }
+              autoComplete="off"
+            />
+
+            <button
+              type="submit"
+              disabled={
+                loadingSearch ||
+                saving
+              }
+            >
+              {loadingSearch
+                ? "Searching..."
+                : "Search"}
+            </button>
+          </form>
+        </section>
+
+        {results.length > 0 && (
+          <section>
+            <h2>
+              Search Results
+            </h2>
+
+            {results.map(
+              (
+                location,
+                index
+              ) => (
+                <article
+                  key={`${location.latitude}-${location.longitude}-${index}`}
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleSelectLocation(
+                        location
+                      )
+                    }
+                  >
+                    <strong>
+                      {
+                        location.name
+                      }
+                    </strong>
+
+                    <br />
+
+                    <small>
+                      {[
+                        location.state,
+                        location.country,
+                      ]
+                        .filter(
+                          Boolean
+                        )
+                        .join(
+                          ", "
+                        )}
+                    </small>
+                  </button>
+                </article>
+              )
+            )}
+          </section>
+        )}
+
+        {selectedLocation && (
+          <section>
+            <h2>
+              Selected Location
+            </h2>
+
+            <article>
+              <h3>
+                {
+                  selectedLocation.name
                 }
-              >
-                {location.name}
-              </button>
-            )
-          )}
-        </div>
-      )}
+              </h3>
 
-      {selectedLocation && (
-        <div>
-          <h3>Selected Location</h3>
+              <p>
+                Latitude:{" "}
+                {
+                  selectedLocation.latitude
+                }
+              </p>
 
-          <p>
-            {selectedLocation.name}
-          </p>
+              <p>
+                Longitude:{" "}
+                {
+                  selectedLocation.longitude
+                }
+              </p>
 
-          <p>
-            Latitude:{" "}
-            {selectedLocation.latitude}
-          </p>
+              {selectedLocation.accuracy && (
+                <p>
+                  GPS accuracy:{" "}
+                  {
+                    Math.round(
+                      selectedLocation.accuracy
+                    )
+                  }{" "}
+                  m
+                </p>
+              )}
+            </article>
+          </section>
+        )}
 
-          <p>
-            Longitude:{" "}
-            {selectedLocation.longitude}
-          </p>
-        </div>
-      )}
+        {error && (
+          <section>
+            <p>
+              {error}
+            </p>
+          </section>
+        )}
+      </main>
 
-      {error && <p>{error}</p>}
-
-      <div>
+      <footer>
         <button
           type="button"
           onClick={() =>
-            navigate("/onboarding")
+            navigate(
+              "/onboarding"
+            )
           }
+          disabled={saving}
         >
           Back
         </button>
 
         <button
           type="button"
-          onClick={handleContinue}
+          onClick={
+            handleContinue
+          }
           disabled={
-            !selectedLocation || saving
+            !selectedLocation ||
+            saving
           }
         >
           {saving
             ? "Saving..."
-            : "Continue"}
+            : "Continue to Mausam"}
         </button>
-      </div>
+      </footer>
     </div>
   );
 }

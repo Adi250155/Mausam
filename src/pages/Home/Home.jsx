@@ -23,6 +23,8 @@ import WidgetRenderer from "../../components/widgets/WidgetRenderer";
 
 import LogoutButton from "../../components/auth/LogoutButton";
 
+import BottomNavigation from "../../components/navigation/BottomNavigation";
+
 function Home() {
   const [
     preferences,
@@ -134,24 +136,15 @@ function Home() {
             "beach"
           )
         ) {
-          try {
-            const marineData =
-              await getMarineWeather(
-                primary.latitude,
-                primary.longitude
-              );
-
-            setMarine(
-              marineData
-            );
-          } catch (marineError) {
-            console.warn(
-              "Marine data unavailable:",
-              marineError
+          const marineData =
+            await getMarineWeather(
+              primary.latitude,
+              primary.longitude
             );
 
-            setMarine(null);
-          }
+          setMarine(
+            marineData
+          );
         } else {
           setMarine(null);
         }
@@ -177,6 +170,10 @@ function Home() {
     preferences?.interests ||
     [];
 
+  const answers =
+    preferences?.answers ||
+    {};
+
   const widgets =
     useMemo(
       () =>
@@ -184,7 +181,10 @@ function Home() {
           categories,
           weather
         ),
-      [categories, weather]
+      [
+        categories,
+        weather,
+      ]
     );
 
   if (loading) {
@@ -209,7 +209,9 @@ function Home() {
           Something went wrong
         </h1>
 
-        <p>{error}</p>
+        <p>
+          {error}
+        </p>
 
         <button
           type="button"
@@ -221,6 +223,7 @@ function Home() {
         </button>
 
         <LogoutButton />
+        <BottomNavigation />
       </div>
     );
   }
@@ -228,7 +231,9 @@ function Home() {
   return (
     <div>
       <header>
-        <h1>Mausam</h1>
+        <h1>
+          Mausam
+        </h1>
 
         <h2>
           {location?.name ||
@@ -238,13 +243,24 @@ function Home() {
         <p>
           Personalized for{" "}
           {categories.length
-            ? categories.join(", ")
+            ? categories.join(
+                ", "
+              )
             : "you"}
         </p>
 
         <small>
           Weather data:{" "}
-          {weather?.source?.weather ||
+          {weather?.source
+            ?.weather ||
+            "Unavailable"}
+        </small>
+
+        <br />
+
+        <small>
+          Air quality:{" "}
+          {airQuality?.source ||
             "Unavailable"}
         </small>
       </header>
@@ -256,18 +272,23 @@ function Home() {
               <WidgetRenderer
                 key={widget}
                 widget={widget}
-                weather={weather}
+                weather={
+                  weather
+                }
                 airQuality={
                   airQuality
                 }
                 marine={marine}
+                answers={
+                  answers
+                }
               />
             )
           )
         ) : (
           <p>
-            No personalized widgets
-            available.
+            No personalized
+            widgets available.
           </p>
         )}
       </main>
@@ -275,6 +296,8 @@ function Home() {
       <footer>
         <LogoutButton />
       </footer>
+
+      <BottomNavigation />
     </div>
   );
 }

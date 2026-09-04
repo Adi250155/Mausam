@@ -33,6 +33,53 @@ export async function getUserProfile() {
   return data;
 }
 
+export async function updateUserProfile(
+  updates = {}
+) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    throw new Error(
+      "User is not authenticated."
+    );
+  }
+
+  const allowedUpdates = {};
+
+  if (
+    updates.full_name !== undefined
+  ) {
+    allowedUpdates.full_name =
+      String(
+        updates.full_name
+      ).trim();
+  }
+
+  if (
+    Object.keys(
+      allowedUpdates
+    ).length === 0
+  ) {
+    return getUserProfile();
+  }
+
+  const { data, error } =
+    await supabase
+      .from("profiles")
+      .update(
+        allowedUpdates
+      )
+      .eq("id", user.id)
+      .select()
+      .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
 export async function saveUserPreferences(
   categories,
   answers
@@ -45,22 +92,32 @@ export async function saveUserPreferences(
     );
   }
 
-  const { data, error } = await supabase
-    .from("user_preferences")
-    .upsert(
-      {
-        user_id: user.id,
-        interests: categories,
-        answers: answers,
-        updated_at:
-          new Date().toISOString(),
-      },
-      {
-        onConflict: "user_id",
-      }
-    )
-    .select()
-    .single();
+  const { data, error } =
+    await supabase
+      .from("user_preferences")
+      .upsert(
+        {
+          user_id: user.id,
+          interests:
+            Array.isArray(categories)
+              ? categories
+              : [],
+          answers:
+            answers &&
+            typeof answers ===
+              "object"
+              ? answers
+              : {},
+          updated_at:
+            new Date().toISOString(),
+        },
+        {
+          onConflict:
+            "user_id",
+        }
+      )
+      .select()
+      .single();
 
   if (error) {
     throw error;
@@ -76,11 +133,12 @@ export async function getUserPreferences() {
     return null;
   }
 
-  const { data, error } = await supabase
-    .from("user_preferences")
-    .select("*")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const { data, error } =
+    await supabase
+      .from("user_preferences")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
   if (error) {
     throw error;
@@ -89,7 +147,9 @@ export async function getUserPreferences() {
   return data;
 }
 
-export async function saveLocation(location) {
+export async function saveLocation(
+  location
+) {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -98,15 +158,135 @@ export async function saveLocation(location) {
     );
   }
 
-  const { data, error } = await supabase
+  if (
+    location?.latitude ===
+      undefined ||
+    location?.longitude ===
+      undefined
+  ) {
+    throw new Error(
+      "Valid location coordinates are required."
+    );
+  }
+
+  const existing =
+    await getSavedLocations();
+
+  const shouldBePrimary =
+    existing.length === 0;
+
+  if (shouldBePrimary) {
+    // First location is automatically primary.
+  }
+
+  const { data, error } =
+    await supabase
+      .from("saved_locations")
+      .insert({
+        user_id: user.id,
+        name:
+          location.name ||
+          "Saved Location",
+        latitude:
+          Number(
+            location.latitude
+          ),
+        longitude:
+          Number(
+            location.longitude
+          ),
+        is_primary:
+          shouldBePrimary,
+      })
+      .select()
+      .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+export async function getSavedLocations() {
+  const user =
+    await getCurrentUser();
+
+  if (!user) {
+    return [];
+  }
+
+  const { data, error } =
+    await supabase
+      .from("saved_locations")
+      .select("*")
+      .eq("user_id", user.id)
+      .order(
+        "is_primary",
+        {
+          ascending: false,
+        }
+      )
+      .order(
+        "created_at",
+        {
+          ascending: true,
+        }
+      );
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+}
+
+export async function setPrimaryLocation(
+  locationId
+) {
+  const user =
+    await getCurrentUser();
+
+  if (!user) {
+    throw new Error(
+      "User is not authenticated."
+    );
+  }
+
+  if (!locationId) {
+    throw new Error(
+      "Location ID is required."
+    );
+  }
+
+  const { error: resetError } =
+    await supabase
+      .from("saved_locations")
+      .update({
+        is_primary: false,
+      })
+      .eq("user_id", user.id);
+
+  if (resetError) {
+    throw resetError;
+  }
+
+  const {
+    data,
+    error,
+  } = await supabase
     .from("saved_locations")
-    .insert({
-      user_id: user.id,
-      name: location.name,
-      latitude: location.latitude,
-      longitude: location.longitude,
+    .update({
       is_primary: true,
     })
+    .eq(
+      "id",
+      locationId
+    )
+    .eq(
+      "user_id",
+      user.id
+    )
     .select()
     .single();
 
@@ -117,24 +297,99 @@ export async function saveLocation(location) {
   return data;
 }
 
-export async function getSavedLocations() {
-  const user = await getCurrentUser();
+export async function deleteLocation(
+  locationId
+) {
+  const user =
+    await getCurrentUser();
 
   if (!user) {
-    return [];
+    throw new Error(
+      "User is not authenticated."
+    );
   }
 
-  const { data, error } = await supabase
-    .from("saved_locations")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", {
-      ascending: true,
-    });
+  const locations =
+    await getSavedLocations();
+
+  const target =
+    locations.find(
+      (location) =>
+        location.id ===
+        locationId
+    );
+
+  if (!target) {
+    throw new Error(
+      "Location not found."
+    );
+  }
+
+  if (
+    locations.length === 1
+  ) {
+    throw new Error(
+      "You must keep at least one saved location."
+    );
+  }
+
+  const { error } =
+    await supabase
+      .from("saved_locations")
+      .delete()
+      .eq(
+        "id",
+        locationId
+      )
+      .eq(
+        "user_id",
+        user.id
+      );
 
   if (error) {
     throw error;
   }
 
-  return data || [];
+  if (target.is_primary) {
+    const remaining =
+      locations.filter(
+        (location) =>
+          location.id !==
+          locationId
+      );
+
+    if (
+      remaining.length > 0
+    ) {
+      await supabase
+        .from(
+          "saved_locations"
+        )
+        .update({
+          is_primary: false,
+        })
+        .eq(
+          "user_id",
+          user.id
+        );
+
+      await supabase
+        .from(
+          "saved_locations"
+        )
+        .update({
+          is_primary: true,
+        })
+        .eq(
+          "id",
+          remaining[0].id
+        )
+        .eq(
+          "user_id",
+          user.id
+        );
+    }
+  }
+
+  return true;
 }

@@ -19,8 +19,13 @@ import BottomNavigation from "../../components/navigation/BottomNavigation";
 
 function Alerts() {
   const [
-    alerts,
-    setAlerts,
+    weatherAlerts,
+    setWeatherAlerts,
+  ] = useState([]);
+
+  const [
+    officialWarnings,
+    setOfficialWarnings,
   ] = useState([]);
 
   const [
@@ -50,8 +55,8 @@ function Alerts() {
 
         const primary =
           locations.find(
-            (location) =>
-              location.is_primary
+            (item) =>
+              item.is_primary
           ) ||
           locations[0];
 
@@ -61,10 +66,15 @@ function Alerts() {
             primary.longitude
           );
 
-        setAlerts(
+        setWeatherAlerts(
           generateAlerts(
             weather
           )
+        );
+
+        setOfficialWarnings(
+          weather?.warnings ||
+            []
         );
       } catch (err) {
         console.error(
@@ -118,34 +128,81 @@ function Alerts() {
         <h1>
           Weather Alerts
         </h1>
-
-        <p>
-          Weather insights generated
-          from available Open-Meteo data.
-        </p>
       </header>
 
-      <main>
-        {alerts.length === 0 ? (
-          <section>
-            <h2>
-              No Significant Alerts
-            </h2>
+      <section>
+        <h2>
+          IMD Official Warnings
+        </h2>
 
-            <p>
-              No significant weather
-              conditions detected right now.
-            </p>
-          </section>
+        {officialWarnings.length ===
+        0 ? (
+          <p>
+            No active IMD warning
+            available.
+          </p>
         ) : (
-          alerts.map(
-            (alert, index) => (
+          officialWarnings.map(
+            (
+              warning,
+              index
+            ) => (
+              <article
+                key={
+                  warning.id ||
+                  `imd-${index}`
+                }
+              >
+                <h3>
+                  {warning.title}
+                </h3>
+
+                <p>
+                  {
+                    warning.message
+                  }
+                </p>
+
+                {warning.area && (
+                  <p>
+                    Area:{" "}
+                    {warning.area}
+                  </p>
+                )}
+
+                <small>
+                  Source: IMD
+                </small>
+              </article>
+            )
+          )
+        )}
+      </section>
+
+      <section>
+        <h2>
+          Mausam Weather Alerts
+        </h2>
+
+        {weatherAlerts.length ===
+        0 ? (
+          <p>
+            No significant
+            weather alerts
+            right now.
+          </p>
+        ) : (
+          weatherAlerts.map(
+            (
+              alert,
+              index
+            ) => (
               <article
                 key={`${alert.type}-${index}`}
               >
-                <h2>
+                <h3>
                   {alert.title}
-                </h2>
+                </h3>
 
                 <p>
                   {alert.message}
@@ -153,13 +210,15 @@ function Alerts() {
 
                 <small>
                   Severity:{" "}
-                  {alert.severity}
+                  {
+                    alert.severity
+                  }
                 </small>
               </article>
             )
           )
         )}
-      </main>
+      </section>
 
       <BottomNavigation />
     </div>

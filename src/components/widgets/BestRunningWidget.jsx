@@ -2,18 +2,28 @@
   getBestRunningTime,
 } from "../../features/recommendations/recommendationEngine";
 
-function BestRunningWidget({ weather }) {
+function BestRunningWidget({
+  weather,
+}) {
   const result =
-    getBestRunningTime(weather);
+    getBestRunningTime(
+      weather
+    );
 
   return (
-    <div>
-      <h3>{result.title}</h3>
+    <section>
+      <h2>
+        {result.title}
+      </h2>
 
-      <h2>{result.value}</h2>
+      <h1>
+        {result.value}
+      </h1>
 
-      <p>{result.reason}</p>
-    </div>
+      <p>
+        {result.reason}
+      </p>
+    </section>
   );
 }
 

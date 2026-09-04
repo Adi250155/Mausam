@@ -2,16 +2,29 @@
   getCropGuidance,
 } from "../../features/recommendations/recommendationEngine";
 
-function CropGuidanceWidget({ weather }) {
+function CropGuidanceWidget({
+  weather,
+}) {
   const result =
-    getCropGuidance(weather);
+    getCropGuidance(
+      weather
+    );
 
   return (
-    <div>
-      <h3>{result.title}</h3>
+    <section>
+      <h2>
+        Crop Guidance
+      </h2>
 
-      <p>{result.value}</p>
-    </div>
+      <p>
+        {result.value}
+      </p>
+
+      <small>
+        Guidance is generated from
+        available weather conditions.
+      </small>
+    </section>
   );
 }
 

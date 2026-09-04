@@ -1,72 +1,270 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  useNavigate,
+} from "react-router-dom";
 
 import {
   getSavedLocations,
+  setPrimaryLocation,
+  deleteLocation,
 } from "../../services/user/profileService";
 
+import BottomNavigation from "../../components/navigation/BottomNavigation";
+
 function SavedLocations() {
-  const [locations, setLocations] =
-    useState([]);
+  const navigate =
+    useNavigate();
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    locations,
+    setLocations,
+  ] = useState([]);
 
-  const loadLocations =
-    async () => {
-      try {
-        const data =
-          await getSavedLocations();
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-        setLocations(data);
-      } catch (error) {
-        console.error(
-          error
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
+  const [
+    actionLoading,
+    setActionLoading,
+  ] = useState(false);
+
+  const [
+    error,
+    setError,
+  ] = useState("");
+
+  async function loadLocations() {
+    try {
+      setLoading(true);
+      setError("");
+
+      const data =
+        await getSavedLocations();
+
+      setLocations(
+        data
+      );
+    } catch (err) {
+      console.error(
+        "Saved locations error:",
+        err
+      );
+
+      setError(
+        err.message ||
+          "Unable to load saved locations."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     loadLocations();
   }, []);
 
+  async function handleSetPrimary(
+    locationId
+  ) {
+    try {
+      setActionLoading(
+        true
+      );
+      setError("");
+
+      await setPrimaryLocation(
+        locationId
+      );
+
+      await loadLocations();
+    } catch (err) {
+      console.error(
+        "Set primary location error:",
+        err
+      );
+
+      setError(
+        err.message ||
+          "Unable to change primary location."
+      );
+    } finally {
+      setActionLoading(
+        false
+      );
+    }
+  }
+
+  async function handleDelete(
+    locationId
+  ) {
+    const confirmed =
+      window.confirm(
+        "Delete this saved location?"
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setActionLoading(
+        true
+      );
+      setError("");
+
+      await deleteLocation(
+        locationId
+      );
+
+      await loadLocations();
+    } catch (err) {
+      console.error(
+        "Delete location error:",
+        err
+      );
+
+      setError(
+        err.message ||
+          "Unable to delete location."
+      );
+    } finally {
+      setActionLoading(
+        false
+      );
+    }
+  }
+
   if (loading) {
-    return <p>Loading locations...</p>;
+    return (
+      <div>
+        <h1>
+          Saved Locations
+        </h1>
+
+        <p>
+          Loading locations...
+        </p>
+
+        <BottomNavigation />
+      </div>
+    );
   }
 
   return (
     <div>
-      <h1>
-        Saved Locations
-      </h1>
+      <header>
+        <h1>
+          Saved Locations
+        </h1>
 
-      {!locations.length && (
-        <p>
-          No saved locations yet.
-        </p>
+        <button
+          type="button"
+          onClick={() =>
+            navigate(
+              "/location"
+            )
+          }
+        >
+          Add Location
+        </button>
+      </header>
+
+      {error && (
+        <p>{error}</p>
       )}
 
-      {locations.map(
-        (location) => (
-          <div key={location.id}>
-            <h3>
-              {location.name}
-            </h3>
+      {locations.length ===
+      0 ? (
+        <div>
+          <p>
+            No saved locations yet.
+          </p>
 
-            <p>
-              {location.latitude},{" "}
-              {location.longitude}
-            </p>
+          <button
+            type="button"
+            onClick={() =>
+              navigate(
+                "/location"
+              )
+            }
+          >
+            Add Your First
+            Location
+          </button>
+        </div>
+      ) : (
+        <main>
+          {locations.map(
+            (location) => (
+              <article
+                key={
+                  location.id
+                }
+              >
+                <h2>
+                  {location.name ||
+                    "Saved Location"}
+                </h2>
 
-            {location.is_primary && (
-              <p>
-                Primary location
-              </p>
-            )}
-          </div>
-        )
+                <p>
+                  {location.latitude},{" "}
+                  {
+                    location.longitude
+                  }
+                </p>
+
+                {location.is_primary && (
+                  <strong>
+                    Primary Location
+                  </strong>
+                )}
+
+                <div>
+                  {!location.is_primary && (
+                    <button
+                      type="button"
+                      disabled={
+                        actionLoading
+                      }
+                      onClick={() =>
+                        handleSetPrimary(
+                          location.id
+                        )
+                      }
+                    >
+                      Set Primary
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    disabled={
+                      actionLoading ||
+                      locations.length ===
+                        1
+                    }
+                    onClick={() =>
+                      handleDelete(
+                        location.id
+                      )
+                    }
+                  >
+                    Delete
+                  </button>
+                </div>
+              </article>
+            )
+          )}
+        </main>
       )}
+
+      <BottomNavigation />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import UvWidget from "./UvWidget";
 import HumidityWidget from "./HumidityWidget";
 
 import AlertWidget from "./AlertWidget";
+import OfficialWarningWidget from "./OfficialWarningWidget";
 
 import BestRunningWidget from "./BestRunningWidget";
 import PackingWidget from "./PackingWidget";
@@ -50,6 +51,13 @@ function WidgetRenderer({
     case "currentWeather":
       return (
         <CurrentWeather
+          weather={weather}
+        />
+      );
+
+    case "officialWarning":
+      return (
+        <OfficialWarningWidget
           weather={weather}
         />
       );

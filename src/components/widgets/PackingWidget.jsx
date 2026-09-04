@@ -2,16 +2,24 @@
   getPackingSuggestion,
 } from "../../features/recommendations/recommendationEngine";
 
-function PackingWidget({ weather }) {
+function PackingWidget({
+  weather,
+}) {
   const result =
-    getPackingSuggestion(weather);
+    getPackingSuggestion(
+      weather
+    );
 
   return (
-    <div>
-      <h3>{result.title}</h3>
+    <section>
+      <h2>
+        {result.title}
+      </h2>
 
-      <p>{result.value}</p>
-    </div>
+      <p>
+        {result.value}
+      </p>
+    </section>
   );
 }
 

@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
 import {
   getSavedLocations,
@@ -6,150 +9,334 @@ import {
 
 import {
   getWeather,
+  getAirQuality,
 } from "../../services/weather/weatherService";
 
 import {
-  getWeatherDescription,
-  getWeatherIcon,
-} from "../../services/weather/weatherUtils";
+  getTravelRisk,
+  getBestRunningTime,
+} from "../../features/recommendations/recommendationEngine";
+
+import BottomNavigation from "../../components/navigation/BottomNavigation";
 
 function Explore() {
-  const [data, setData] = useState(null);
-  const [location, setLocation] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [
+    locations,
+    setLocations,
+  ] = useState([]);
+
+  const [
+    selectedLocation,
+    setSelectedLocation,
+  ] = useState(null);
+
+  const [
+    weather,
+    setWeather,
+  ] = useState(null);
+
+  const [
+    airQuality,
+    setAirQuality,
+  ] = useState(null);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  const [
+    error,
+    setError,
+  ] = useState("");
 
   useEffect(() => {
-    const loadExplore = async () => {
+    async function loadExplore() {
       try {
-        const locations =
+        setLoading(true);
+        setError("");
+
+        const saved =
           await getSavedLocations();
 
-        if (!locations.length) {
+        if (!saved?.length) {
           throw new Error(
-            "No saved location found."
+            "No saved locations found."
           );
         }
 
         const primary =
-          locations.find(
-            (item) => item.is_primary
-          ) || locations[0];
+          saved.find(
+            (location) =>
+              location.is_primary
+          ) || saved[0];
 
-        setLocation(primary);
+        setLocations(saved);
+        setSelectedLocation(primary);
 
-        const weather =
-          await getWeather(
+        const [
+          weatherData,
+          airData,
+        ] = await Promise.all([
+          getWeather(
             primary.latitude,
             primary.longitude
-          );
+          ),
 
-        setData(weather);
-      } catch (error) {
-        setError(error.message);
+          getAirQuality(
+            primary.latitude,
+            primary.longitude
+          ),
+        ]);
+
+        setWeather(
+          weatherData
+        );
+
+        setAirQuality(
+          airData
+        );
+      } catch (err) {
+        console.error(
+          "Explore error:",
+          err
+        );
+
+        setError(
+          err.message ||
+            "Unable to load explore data."
+        );
       } finally {
         setLoading(false);
       }
-    };
+    }
 
     loadExplore();
   }, []);
 
-  if (loading) {
-    return <p>Loading explore...</p>;
+  async function handleLocationChange(
+    location
+  ) {
+    try {
+      setSelectedLocation(
+        location
+      );
+
+      setLoading(true);
+      setError("");
+
+      const [
+        weatherData,
+        airData,
+      ] = await Promise.all([
+        getWeather(
+          location.latitude,
+          location.longitude
+        ),
+
+        getAirQuality(
+          location.latitude,
+          location.longitude
+        ),
+      ]);
+
+      setWeather(
+        weatherData
+      );
+
+      setAirQuality(
+        airData
+      );
+    } catch (err) {
+      console.error(
+        "Location weather error:",
+        err
+      );
+
+      setError(
+        err.message ||
+          "Unable to load weather."
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
-  if (error) {
-    return <p>{error}</p>;
+  if (
+    loading &&
+    !weather
+  ) {
+    return (
+      <div>
+        <h1>
+          Explore
+        </h1>
+
+        <p>
+          Loading weather...
+        </p>
+
+        <BottomNavigation />
+      </div>
+    );
   }
 
-  const current = data.current;
+  if (
+    error &&
+    !weather
+  ) {
+    return (
+      <div>
+        <h1>
+          Explore
+        </h1>
+
+        <p>
+          {error}
+        </p>
+
+        <BottomNavigation />
+      </div>
+    );
+  }
+
+  const travel =
+    getTravelRisk(
+      weather
+    );
+
+  const running =
+    getBestRunningTime(
+      weather
+    );
+
+  const aqi =
+    airQuality?.aqi;
 
   return (
     <div>
-      <h1>Explore</h1>
+      <header>
+        <h1>
+          Explore
+        </h1>
 
-      <h2>{location.name}</h2>
+        <p>
+          Weather insights for
+          your saved locations.
+        </p>
+      </header>
 
-      <h3>
-        {getWeatherIcon(current.weather_code)}{" "}
-        {Math.round(current.temperature_2m)}°C
-      </h3>
+      <section>
+        <h2>
+          Saved Locations
+        </h2>
 
-      <p>
-        {getWeatherDescription(
-          current.weather_code
+        {locations.map(
+          (location) => (
+            <button
+              type="button"
+              key={location.id}
+              onClick={() =>
+                handleLocationChange(
+                  location
+                )
+              }
+            >
+              {location.name}
+
+              {location.is_primary
+                ? " • Primary"
+                : ""}
+            </button>
+          )
         )}
-      </p>
+      </section>
 
-      <p>
-        Feels like{" "}
-        {Math.round(
-          current.apparent_temperature
-        )}
-        °C
-      </p>
+      {selectedLocation && (
+        <section>
+          <h2>
+            {selectedLocation.name}
+          </h2>
 
-      <p>
-        Humidity:{" "}
-        {current.relative_humidity_2m}%
-      </p>
+          <p>
+            Weather source:{" "}
+            {weather?.source
+              ?.weather ||
+              "Unavailable"}
+          </p>
 
-      <p>
-        Wind:{" "}
-        {Math.round(
-          current.wind_speed_10m
-        )} km/h
-      </p>
-
-      <h2>7 Day Forecast</h2>
-
-      {data.daily.time.map(
-        (day, index) => (
-          <div key={day}>
-            <strong>{day}</strong>
-
-            <p>
-              {
-                getWeatherDescription(
-                  data.daily
-                    .weather_code[index]
-                )
-              }
-            </p>
-
-            <p>
-              High:{" "}
-              {
-                Math.round(
-                  data.daily
-                    .temperature_2m_max[index]
-                )
-              }
-              °C
-            </p>
-
-            <p>
-              Low:{" "}
-              {
-                Math.round(
-                  data.daily
-                    .temperature_2m_min[index]
-                )
-              }
-              °C
-            </p>
-
-            <p>
-              Rain:{" "}
-              {
-                data.daily
-                  .precipitation_probability_max[index]
-              }%
-            </p>
-          </div>
-        )
+          <p>
+            Air quality source:{" "}
+            {airQuality?.source ||
+              "Unavailable"}
+          </p>
+        </section>
       )}
+
+      <section>
+        <h2>
+          Quick Insights
+        </h2>
+
+        <article>
+          <h3>
+            Travel
+          </h3>
+
+          <strong>
+            {travel.score}/100
+          </strong>
+
+          <p>
+            {travel.label}
+          </p>
+        </article>
+
+        <article>
+          <h3>
+            Outdoor Workout
+          </h3>
+
+          <strong>
+            {running.value}
+          </strong>
+
+          <p>
+            {running.reason}
+          </p>
+        </article>
+
+        <article>
+          <h3>
+            Air Quality
+          </h3>
+
+          <strong>
+            {aqi ??
+              "Unavailable"}
+          </strong>
+
+          <p>
+            {aqi != null
+              ? "Current AQI"
+              : "AQI unavailable"}
+          </p>
+        </article>
+      </section>
+
+      {loading && (
+        <p>
+          Updating weather...
+        </p>
+      )}
+
+      {error && (
+        <p>
+          {error}
+        </p>
+      )}
+
+      <BottomNavigation />
     </div>
   );
 }

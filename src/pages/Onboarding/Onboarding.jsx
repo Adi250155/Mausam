@@ -1,451 +1,830 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-
-import { categories } from "../../personalization/categories";
-import { questions } from "../../personalization/questions";
 import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  useNavigate,
+} from "react-router-dom";
+
+import {
+  categories,
+} from "../../personalization/categories";
+
+import {
+  getUserPreferences,
   saveUserPreferences,
 } from "../../services/user/profileService";
 
 function Onboarding() {
   const navigate = useNavigate();
 
-  const [
-    selectedCategories,
-    setSelectedCategories,
-  ] = useState([]);
+  const [step, setStep] = useState(1);
 
-  const [answers, setAnswers] =
-    useState({});
+  const [selectedCategories, setSelectedCategories] =
+    useState([]);
 
-  const [step, setStep] =
-    useState(1);
+  const [answers, setAnswers] = useState({});
 
-  const [categoryIndex, setCategoryIndex] =
-    useState(0);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const [loading, setLoading] =
-    useState(false);
+  const [error, setError] = useState("");
 
-  const [error, setError] =
-    useState("");
+  const totalSteps = 2;
 
-  const toggleCategory = (
-    categoryId
-  ) => {
-    setSelectedCategories((prev) =>
-      prev.includes(categoryId)
-        ? prev.filter(
-            (id) => id !== categoryId
-          )
-        : [...prev, categoryId]
-    );
-  };
-
-  const setSingleAnswer = (
-    questionId,
-    optionId
-  ) => {
-    setAnswers((prev) => ({
-      ...prev,
-      [questionId]: optionId,
-    }));
-  };
-
-  const toggleMultiAnswer = (
-    questionId,
-    optionId
-  ) => {
-    setAnswers((prev) => {
-      const current =
-        prev[questionId] || [];
-
-      return {
-        ...prev,
-        [questionId]:
-          current.includes(optionId)
-            ? current.filter(
-                (id) => id !== optionId
-              )
-            : [
-                ...current,
-                optionId,
-              ],
-      };
-    });
-  };
-
-  const setTextAnswer = (
-    questionId,
-    value
-  ) => {
-    setAnswers((prev) => ({
-      ...prev,
-      [questionId]: value,
-    }));
-  };
-
-  const handleCategoryContinue =
-    () => {
-      if (
-        selectedCategories.length ===
-        0
-      ) {
-        setError(
-          "Please select at least one category."
-        );
-        return;
-      }
-
-      setError("");
-      setStep(2);
-      setCategoryIndex(0);
-    };
-
-  const handleBack = () => {
-    if (step === 1) {
-      navigate("/signup");
-      return;
-    }
-
-    if (categoryIndex > 0) {
-      setCategoryIndex(
-        (prev) => prev - 1
-      );
-      setError("");
-      return;
-    }
-
-    setStep(1);
-    setError("");
-  };
-
-  const handleQuestionContinue =
-    async () => {
-      const currentCategory =
-        selectedCategories[
-          categoryIndex
-        ];
-
-      const currentQuestions =
-        questions[
-          currentCategory
-        ] || [];
-
-      const unansweredQuestion =
-        currentQuestions.find(
-          (question) => {
-            const answer =
-              answers[question.id];
-
-            if (
-              question.type ===
-              "multi"
-            ) {
-              return (
-                !answer ||
-                answer.length === 0
-              );
-            }
-
-            return !answer;
-          }
-        );
-
-      if (unansweredQuestion) {
-        setError(
-          "Please answer all questions before continuing."
-        );
-        return;
-      }
-
-      setError("");
-
-      if (
-        categoryIndex <
-        selectedCategories.length - 1
-      ) {
-        setCategoryIndex(
-          (prev) => prev + 1
-        );
-        return;
-      }
-
+  useEffect(() => {
+    async function loadPreferences() {
       try {
         setLoading(true);
+        setError("");
 
-        await saveUserPreferences(
-          selectedCategories,
-          answers
-        );
+        const existing =
+          await getUserPreferences();
 
-        localStorage.setItem(
-          "mausam_user_profile",
-          JSON.stringify({
-            categories:
-              selectedCategories,
-            answers,
-          })
-        );
+        if (existing) {
+          setSelectedCategories(
+            existing.interests || []
+          );
 
-        navigate("/location");
-      } catch (error) {
+          setAnswers(
+            existing.answers || {}
+          );
+        }
+      } catch (err) {
         console.error(
-          "Failed to save preferences:",
-          error
+          "Onboarding load error:",
+          err
         );
 
         setError(
-          error.message ||
-            "Unable to save your preferences."
+          err.message ||
+            "Unable to load your preferences."
         );
       } finally {
         setLoading(false);
       }
-    };
+    }
 
-  const currentCategoryId =
-    selectedCategories[
-      categoryIndex
-    ];
+    loadPreferences();
+  }, []);
 
-  const currentCategory =
-    categories.find(
-      (category) =>
-        category.id ===
-        currentCategoryId
-    );
+  const selectedCategoryObjects = useMemo(
+    () =>
+      categories.filter((category) =>
+        selectedCategories.includes(
+          category.id
+        )
+      ),
+    [selectedCategories]
+  );
 
-  const currentQuestions =
-    questions[
-      currentCategoryId
-    ] || [];
+  function toggleCategory(categoryId) {
+    setSelectedCategories((current) => {
+      if (current.includes(categoryId)) {
+        return current.filter(
+          (id) => id !== categoryId
+        );
+      }
 
-  return (
-    <div>
-      {step === 1 && (
-        <>
-          <button
-            type="button"
-            onClick={() =>
-              navigate("/signup")
-            }
-          >
-            ← Back
-          </button>
+      return [
+        ...current,
+        categoryId,
+      ];
+    });
+  }
 
-          <h1>
-            Personalize Your Mausam
-          </h1>
+  function updateAnswer(
+    categoryId,
+    key,
+    value
+  ) {
+    setAnswers((current) => ({
+      ...current,
+      [categoryId]: {
+        ...(current[categoryId] || {}),
+        [key]: value,
+      },
+    }));
+  }
 
-          <p>
-            What do you use weather
-            information for?
-          </p>
+  function goToQuestions() {
+    if (selectedCategories.length === 0) {
+      setError(
+        "Please select at least one interest."
+      );
+      return;
+    }
 
-          {categories.map(
-            (category) => {
+    setError("");
+    setStep(2);
+  }
+
+  async function finishOnboarding() {
+    try {
+      setSaving(true);
+      setError("");
+
+      await saveUserPreferences(
+        selectedCategories,
+        answers
+      );
+
+      navigate("/location", {
+        replace: true,
+      });
+    } catch (err) {
+      console.error(
+        "Onboarding save error:",
+        err
+      );
+
+      setError(
+        err.message ||
+          "Unable to save your preferences."
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleBack() {
+    if (step === 1) {
+      navigate(-1);
+      return;
+    }
+
+    setError("");
+    setStep(1);
+  }
+
+  function renderQuestionCard(category) {
+    const categoryAnswers =
+      answers[category.id] || {};
+
+    switch (category.id) {
+      case "travel":
+        return (
+          <section key={category.id}>
+            <h2>Travel</h2>
+
+            <p>
+              What type of travel do you usually
+              plan?
+            </p>
+
+            <div>
+              {[
+                "domestic",
+                "international",
+                "both",
+              ].map((value) => (
+                <button
+                  type="button"
+                  key={value}
+                  onClick={() =>
+                    updateAnswer(
+                      category.id,
+                      "travelType",
+                      value
+                    )
+                  }
+                >
+                  {categoryAnswers.travelType ===
+                  value
+                    ? "✓ "
+                    : ""}
+                  {value}
+                </button>
+              ))}
+            </div>
+
+            <p>
+              What information matters most?
+            </p>
+
+            {[
+              "rain",
+              "temperature",
+              "severeWeather",
+              "wind",
+              "visibility",
+              "packing",
+            ].map((value) => {
               const selected =
-                selectedCategories.includes(
-                  category.id
+                categoryAnswers.importantInfo?.includes(
+                  value
                 );
 
               return (
-                <div
-                  key={category.id}
+                <button
+                  type="button"
+                  key={value}
+                  onClick={() => {
+                    const current =
+                      categoryAnswers.importantInfo ||
+                      [];
+
+                    const next = selected
+                      ? current.filter(
+                          (item) =>
+                            item !== value
+                        )
+                      : [...current, value];
+
+                    updateAnswer(
+                      category.id,
+                      "importantInfo",
+                      next
+                    );
+                  }}
                 >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      toggleCategory(
-                        category.id
-                      )
-                    }
-                  >
-                    {selected
-                      ? "✓ "
-                      : ""}
-                    {
-                      category.title
-                    }
-                  </button>
-
-                  <p>
-                    {
-                      category.description
-                    }
-                  </p>
-                </div>
+                  {selected ? "✓ " : ""}
+                  {value}
+                </button>
               );
-            }
-          )}
+            })}
+          </section>
+        );
 
-          {error && (
-            <p>{error}</p>
-          )}
+      case "agriculture":
+        return (
+          <section key={category.id}>
+            <h2>
+              Farming & Gardening
+            </h2>
 
+            <p>
+              Which one describes you?
+            </p>
+
+            {[
+              "farmer",
+              "gardener",
+              "both",
+            ].map((value) => (
+              <button
+                type="button"
+                key={value}
+                onClick={() =>
+                  updateAnswer(
+                    category.id,
+                    "userType",
+                    value
+                  )
+                }
+              >
+                {categoryAnswers.userType ===
+                value
+                  ? "✓ "
+                  : ""}
+                {value}
+              </button>
+            ))}
+
+            <label>
+              Crop / Plant name
+
+              <input
+                type="text"
+                placeholder="e.g. Rice, Wheat, Tomato"
+                value={
+                  categoryAnswers.cropName ||
+                  ""
+                }
+                onChange={(event) =>
+                  updateAnswer(
+                    category.id,
+                    "cropName",
+                    event.target.value
+                  )
+                }
+              />
+            </label>
+
+            <p>
+              What information is important?
+            </p>
+
+            {[
+              "rainfall",
+              "soilMoisture",
+              "temperature",
+              "humidity",
+              "wind",
+              "frost",
+            ].map((value) => {
+              const selected =
+                categoryAnswers.importantInfo?.includes(
+                  value
+                );
+
+              return (
+                <button
+                  type="button"
+                  key={value}
+                  onClick={() => {
+                    const current =
+                      categoryAnswers.importantInfo ||
+                      [];
+
+                    const next = selected
+                      ? current.filter(
+                          (item) =>
+                            item !== value
+                        )
+                      : [...current, value];
+
+                    updateAnswer(
+                      category.id,
+                      "importantInfo",
+                      next
+                    );
+                  }}
+                >
+                  {selected ? "✓ " : ""}
+                  {value}
+                </button>
+              );
+            })}
+          </section>
+        );
+
+      case "fitness":
+        return (
+          <section key={category.id}>
+            <h2>
+              Outdoor Fitness
+            </h2>
+
+            <p>
+              Which activities do you do?
+            </p>
+
+            {[
+              "running",
+              "cycling",
+              "walking",
+              "outdoorWorkout",
+            ].map((value) => {
+              const selected =
+                categoryAnswers.activities?.includes(
+                  value
+                );
+
+              return (
+                <button
+                  type="button"
+                  key={value}
+                  onClick={() => {
+                    const current =
+                      categoryAnswers.activities ||
+                      [];
+
+                    const next = selected
+                      ? current.filter(
+                          (item) =>
+                            item !== value
+                        )
+                      : [...current, value];
+
+                    updateAnswer(
+                      category.id,
+                      "activities",
+                      next
+                    );
+                  }}
+                >
+                  {selected ? "✓ " : ""}
+                  {value}
+                </button>
+              );
+            })}
+
+            <p>
+              Preferred workout time
+            </p>
+
+            {[
+              "morning",
+              "afternoon",
+              "evening",
+              "any",
+            ].map((value) => (
+              <button
+                type="button"
+                key={value}
+                onClick={() =>
+                  updateAnswer(
+                    category.id,
+                    "preferredTime",
+                    value
+                  )
+                }
+              >
+                {categoryAnswers.preferredTime ===
+                value
+                  ? "✓ "
+                  : ""}
+                {value}
+              </button>
+            ))}
+          </section>
+        );
+
+      case "health":
+        return (
+          <section key={category.id}>
+            <h2>
+              Health & Wellness
+            </h2>
+
+            <p>
+              Which information matters most?
+            </p>
+
+            {[
+              "aqi",
+              "pollen",
+              "uv",
+              "humidity",
+              "heat",
+            ].map((value) => {
+              const selected =
+                categoryAnswers.importantInfo?.includes(
+                  value
+                );
+
+              return (
+                <button
+                  type="button"
+                  key={value}
+                  onClick={() => {
+                    const current =
+                      categoryAnswers.importantInfo ||
+                      [];
+
+                    const next = selected
+                      ? current.filter(
+                          (item) =>
+                            item !== value
+                        )
+                      : [...current, value];
+
+                    updateAnswer(
+                      category.id,
+                      "importantInfo",
+                      next
+                    );
+                  }}
+                >
+                  {selected ? "✓ " : ""}
+                  {value}
+                </button>
+              );
+            })}
+          </section>
+        );
+
+      case "family":
+        return (
+          <section key={category.id}>
+            <h2>
+              Family
+            </h2>
+
+            <p>
+              Who should weather information
+              prioritize?
+            </p>
+
+            {[
+              "children",
+              "elderly",
+              "everyone",
+            ].map((value) => (
+              <button
+                type="button"
+                key={value}
+                onClick={() =>
+                  updateAnswer(
+                    category.id,
+                    "familyType",
+                    value
+                  )
+                }
+              >
+                {categoryAnswers.familyType ===
+                value
+                  ? "✓ "
+                  : ""}
+                {value}
+              </button>
+            ))}
+          </section>
+        );
+
+      case "commuter":
+        return (
+          <section key={category.id}>
+            <h2>
+              Commuting
+            </h2>
+
+            <p>
+              When do you usually commute?
+            </p>
+
+            {[
+              "morning",
+              "afternoon",
+              "evening",
+              "multiple",
+            ].map((value) => (
+              <button
+                type="button"
+                key={value}
+                onClick={() =>
+                  updateAnswer(
+                    category.id,
+                    "commuteTime",
+                    value
+                  )
+                }
+              >
+                {categoryAnswers.commuteTime ===
+                value
+                  ? "✓ "
+                  : ""}
+                {value}
+              </button>
+            ))}
+          </section>
+        );
+
+      case "beach":
+        return (
+          <section key={category.id}>
+            <h2>
+              Beach & Surf
+            </h2>
+
+            <p>
+              What do you usually do?
+            </p>
+
+            {[
+              "swimming",
+              "surfing",
+              "beach",
+              "fishing",
+            ].map((value) => {
+              const selected =
+                categoryAnswers.activities?.includes(
+                  value
+                );
+
+              return (
+                <button
+                  type="button"
+                  key={value}
+                  onClick={() => {
+                    const current =
+                      categoryAnswers.activities ||
+                      [];
+
+                    const next = selected
+                      ? current.filter(
+                          (item) =>
+                            item !== value
+                        )
+                      : [...current, value];
+
+                    updateAnswer(
+                      category.id,
+                      "activities",
+                      next
+                    );
+                  }}
+                >
+                  {selected ? "✓ " : ""}
+                  {value}
+                </button>
+              );
+            })}
+          </section>
+        );
+
+      case "events":
+        return (
+          <section key={category.id}>
+            <h2>
+              Outdoor Events
+            </h2>
+
+            <p>
+              What type of event do you organize?
+            </p>
+
+            {[
+              "wedding",
+              "sports",
+              "festival",
+              "gathering",
+              "other",
+            ].map((value) => (
+              <button
+                type="button"
+                key={value}
+                onClick={() =>
+                  updateAnswer(
+                    category.id,
+                    "eventType",
+                    value
+                  )
+                }
+              >
+                {categoryAnswers.eventType ===
+                value
+                  ? "✓ "
+                  : ""}
+                {value}
+              </button>
+            ))}
+
+            <p>
+              Preferred event time
+            </p>
+
+            {[
+              "morning",
+              "afternoon",
+              "evening",
+              "any",
+            ].map((value) => (
+              <button
+                type="button"
+                key={value}
+                onClick={() =>
+                  updateAnswer(
+                    category.id,
+                    "preferredTime",
+                    value
+                  )
+                }
+              >
+                {categoryAnswers.preferredTime ===
+                value
+                  ? "✓ "
+                  : ""}
+                {value}
+              </button>
+            ))}
+          </section>
+        );
+
+      default:
+        return null;
+    }
+  }
+
+  if (loading) {
+    return (
+      <div>
+        <h1>
+          Personalize Mausam
+        </h1>
+
+        <p>
+          Loading your preferences...
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <header>
+        <p>
+          Step {step} of {totalSteps}
+        </p>
+
+        <div
+          aria-label={`Step ${step} of ${totalSteps}`}
+        >
+          <progress
+            value={step}
+            max={totalSteps}
+          />
+        </div>
+
+        <h1>
+          {step === 1
+            ? "What matters to you?"
+            : "Tell us a little more"}
+        </h1>
+
+        <p>
+          {step === 1
+            ? "Choose the weather information you care about."
+            : "These answers help Mausam personalize your dashboard."}
+        </p>
+      </header>
+
+      {error && (
+        <p>
+          {error}
+        </p>
+      )}
+
+      <main>
+        {step === 1 ? (
+          <section>
+            {categories.map(
+              (category) => {
+                const selected =
+                  selectedCategories.includes(
+                    category.id
+                  );
+
+                return (
+                  <article
+                    key={category.id}
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        toggleCategory(
+                          category.id
+                        )
+                      }
+                    >
+                      {selected
+                        ? "✓ "
+                        : ""}
+                      <strong>
+                        {category.title}
+                      </strong>
+
+                      <br />
+
+                      <small>
+                        {
+                          category.description
+                        }
+                      </small>
+                    </button>
+                  </article>
+                );
+              }
+            )}
+          </section>
+        ) : (
+          <div>
+            {selectedCategoryObjects.map(
+              renderQuestionCard
+            )}
+          </div>
+        )}
+      </main>
+
+      <footer>
+        <button
+          type="button"
+          onClick={handleBack}
+          disabled={saving}
+        >
+          Back
+        </button>
+
+        {step === 1 ? (
           <button
             type="button"
             onClick={
-              handleCategoryContinue
+              goToQuestions
+            }
+            disabled={
+              selectedCategories.length ===
+                0
             }
           >
             Continue
           </button>
-        </>
-      )}
-
-      {step === 2 &&
-        currentCategory && (
-          <>
-            <button
-              type="button"
-              onClick={handleBack}
-            >
-              ← Back
-            </button>
-
-            <p>
-              Category{" "}
-              {categoryIndex + 1} of{" "}
-              {
-                selectedCategories.length
-              }
-            </p>
-
-            <h1>
-              {
-                currentCategory.title
-              }
-            </h1>
-
-            {currentQuestions.map(
-              (question) => (
-                <div
-                  key={question.id}
-                >
-                  <h2>
-                    {
-                      question.question
-                    }
-                  </h2>
-
-                  {question.type ===
-                    "single" &&
-                    question.options.map(
-                      (option) => {
-                        const selected =
-                          answers[
-                            question.id
-                          ] ===
-                          option.id;
-
-                        return (
-                          <button
-                            type="button"
-                            key={
-                              option.id
-                            }
-                            onClick={() =>
-                              setSingleAnswer(
-                                question.id,
-                                option.id
-                              )
-                            }
-                          >
-                            {selected
-                              ? "✓ "
-                              : ""}
-
-                            {
-                              option.label
-                            }
-                          </button>
-                        );
-                      }
-                    )}
-
-                  {question.type ===
-                    "multi" &&
-                    question.options.map(
-                      (option) => {
-                        const selected =
-                          answers[
-                            question.id
-                          ]?.includes(
-                            option.id
-                          );
-
-                        return (
-                          <button
-                            type="button"
-                            key={
-                              option.id
-                            }
-                            onClick={() =>
-                              toggleMultiAnswer(
-                                question.id,
-                                option.id
-                              )
-                            }
-                          >
-                            {selected
-                              ? "✓ "
-                              : ""}
-
-                            {
-                              option.label
-                            }
-                          </button>
-                        );
-                      }
-                    )}
-
-                  {question.type ===
-                    "text" && (
-                    <input
-                      type="text"
-                      placeholder={
-                        question.placeholder
-                      }
-                      value={
-                        answers[
-                          question.id
-                        ] || ""
-                      }
-                      onChange={(e) =>
-                        setTextAnswer(
-                          question.id,
-                          e.target.value
-                        )
-                      }
-                    />
-                  )}
-                </div>
-              )
-            )}
-
-            {error && (
-              <p>{error}</p>
-            )}
-
-            <button
-              type="button"
-              onClick={
-                handleQuestionContinue
-              }
-              disabled={loading}
-            >
-              {loading
-                ? "Saving..."
-                : categoryIndex ===
-                  selectedCategories.length -
-                    1
-                ? "Finish Setup"
-                : "Next"}
-            </button>
-          </>
+        ) : (
+          <button
+            type="button"
+            onClick={
+              finishOnboarding
+            }
+            disabled={saving}
+          >
+            {saving
+              ? "Saving..."
+              : "Finish"}
+          </button>
         )}
+      </footer>
     </div>
   );
 }
